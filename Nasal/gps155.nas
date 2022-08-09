@@ -1,14 +1,14 @@
 var specialChars = {
     'ft': utf8.chstr(0x80),
     'mt': utf8.chstr(0x81),
-    'mt': utf8.chstr(0x82),
-    'nm': utf8.chstr(0x83),
-    'mi': utf8.chstr(0x84),
-    'km': utf8.chstr(0x85),
-    'kt': utf8.chstr(0x86),
-    'mh': utf8.chstr(0x87),
-    'kh': utf8.chstr(0x88),
-    'gl': utf8.chstr(0x89),
+    'nm': utf8.chstr(0x82),
+    'mi': utf8.chstr(0x83),
+    'km': utf8.chstr(0x84),
+    'kt': utf8.chstr(0x85),
+    'mh': utf8.chstr(0x86),
+    'kh': utf8.chstr(0x87),
+    'gl': utf8.chstr(0x88),
+    'kg': utf8.chstr(0x89),
     'lt': utf8.chstr(0x8a),
     'ig': utf8.chstr(0x8b),
     'lb': utf8.chstr(0x8c),
@@ -120,6 +120,62 @@ var smallStr = func (str) {
     return accum;
 };
 
+var formatLat = func (lat) {
+    var result = '';
+    if (lat < 0) {
+        result = 'S';
+        lat = -lat;
+    }
+    else {
+        result = 'N';
+    }
+    var degrees = math.floor(lat);
+    var minutesF = (lat - degrees) * 60;
+    var minutes = math.floor(minutesF);
+    var minutesFrac = math.floor((minutesF - minutes) * 1000);
+
+    result ~= sprintf('%02i', degrees) ~
+              specialChars.deg ~
+              sprintf('%02i', minutes) ~
+              smallStr(sprintf('.%03i\'', minutesFrac));
+};
+
+var formatLon = func (lat) {
+    var result = '';
+    if (lat < 0) {
+        result = 'W';
+        lat = -lat;
+    }
+    else {
+        result = 'E';
+    }
+    var degrees = math.floor(lat);
+    var minutesF = (lat - degrees) * 60;
+    var minutes = math.floor(minutesF);
+    var minutesFrac = math.floor((minutesF - minutes) * 1000);
+
+    result ~= sprintf('%03i', degrees) ~
+              specialChars.deg ~
+              sprintf('%02i', minutes) ~
+              smallStr(sprintf('.%03i\'', minutesFrac));
+};
+
+var formatDistance = func (dist) {
+    if (dist < 100) {
+        var i = math.floor(dist);
+        var f = math.floor((dist - i) * 100);
+        return sprintf('%2i', i) ~ smallStr(sprintf('.%02i', f)) ~ specialChars.nm;
+    }
+    elsif (dist < 1000) {
+        var i = math.floor(dist);
+        var f = math.floor((dist - i) * 10);
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ specialChars.nm;
+    }
+    else {
+        return sprintf('%5i', dist) ~ specialChars.nm;
+    }
+};
+
 var initialized = 0;
 var gpsCanvas = nil;
 var gpsScreen = nil;
@@ -127,6 +183,10 @@ var gpsScreen = nil;
 var charElems = [];
 var displayLineProps = [];
 var powered = 0;
+var modeLightProp = nil;
+var msgLightProp = nil;
+var modeProp = nil;
+var msgProp = nil;
 
 var dataKnobValues = { inner: 0, outer: 0 };
 var dataKnobProps = {};
@@ -187,6 +247,52 @@ var BasePage = {
     handleInput: func (what, amount=0) {},
 };
 
+var NavPage = {
+    new: func {
+        return {
+            parents: [NavPage, BasePage],
+            page: 0,
+        };
+    },
+
+    redraw: func {
+    },
+
+    start: func {
+        modeLightProp.setValue('NAV');
+        me.page = 0;
+        me.redraw();
+    },
+
+    stop: func {
+        modeLightProp.setValue('');
+    },
+
+    update: func (dt) {
+        me.redraw();
+    },
+
+    redraw: func {
+        var lat = getprop('/instrumentation/gps/indicated-latitude-deg') or 0;
+        var lon = getprop('/instrumentation/gps/indicated-longitude-deg') or 0;
+        var refID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '----';
+        var refBRG = getprop('/instrumentation/gps/wp/wp[1]/bearing-mag-deg');
+        var refDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
+        var alt = getprop('/instrumentation/altimeter/indicated-altitude-ft') or 0;
+
+        var formattedLat = formatLat(lat);
+        var formattedLon = formatLon(lon);
+        var formattedDistance = formatDistance(refDST);
+        
+        putLine(0, sprintf('alt %5.0f' ~ specialChars.ft, alt));
+        putLine(1, formattedLat ~ ' ' ~ formattedLon);
+        putLine(2,
+            specialChars.fr ~ 'apt ' ~ sprintf('%-5s', refID) ~ ' ' ~
+            sprintf('%03.0f', refBRG) ~ specialChars.deg ~
+            formattedDistance);
+    },
+};
+
 var SatAcquirePage = {
     new: func {
         return {
@@ -203,7 +309,7 @@ var SatAcquirePage = {
         for (var i = 0; i < 7; i += 1) {
             n = math.floor(rand() * 32) + 1;
             while (contains(satsUsed, n)) {
-                printf("%i already in list");
+                printf("%i already in list", n);
                 n = math.floor(rand() * 32) + 1;
             }
             printf("new sat: %i", n);
@@ -213,7 +319,8 @@ var SatAcquirePage = {
                 sgl: rand(),
             });
         }
-        me.timeLeft = (rand() * 300) + 120;
+        # DEBUG
+        me.timeLeft = 5; # (rand() * 300) + 120;
         me.redraw();
     },
 
@@ -243,7 +350,7 @@ var SatAcquirePage = {
         me.timeLeft -= dt;
 
         if (me.timeLeft <= 0) {
-            # loadPage(NavPage.new());
+            loadPage(NavPage.new());
         }
         else {
             me.redraw();
@@ -393,6 +500,8 @@ var initialize = func {
             }, 1, 0);
         })(which);
     }
+    modeLightProp = props.globals.getNode('/instrumentation/gps155/lights/mode', 1);
+    msgLightProp = props.globals.getNode('/instrumentation/gps155/lights/msg', 1);
     setlistener('controls/gps155/key', func (node) {
         var which = node.getValue();
         if (which != '') {
