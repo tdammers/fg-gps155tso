@@ -1,4 +1,12 @@
+var version = '0.1beta';
 var specialChars = {
+    'updown': utf8.chstr(0x12),
+    'cursor': utf8.chstr(0x16),
+    'arrowL': utf8.chstr(0x1b),
+    'arrowR': utf8.chstr(0x1a),
+    'arrowUp': utf8.chstr(0x18),
+    'arrowDn': utf8.chstr(0x19),
+
     'ft': utf8.chstr(0x80),
     'mt': utf8.chstr(0x81),
     'nm': utf8.chstr(0x82),
@@ -26,6 +34,8 @@ var specialChars = {
     'degF': utf8.chstr(0xc5),
     'dot': utf8.chstr(0xc7),
 };
+
+var currentNavPage = 1;
 
 # Convert a regular numeric string into a small-size string, as per the GPS155
 # font.
@@ -160,8 +170,31 @@ var formatLon = func (lat) {
               smallStr(sprintf('.%03i\'', minutesFrac));
 };
 
+var formatDistanceLong = func (dist) {
+    if (dist > 999999) {
+        return '++++++';
+    }
+    elsif (dist < 0) {
+        return '------';
+    }
+    elsif (dist < 1000) {
+        var i = math.floor(dist);
+        var f = math.floor((dist - i) * 100);
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f)) ~ specialChars.nm;
+    }
+    else {
+        return sprintf('%6i', dist) ~ specialChars.nm;
+    }
+};
+
 var formatDistance = func (dist) {
-    if (dist < 100) {
+    if (dist > 99999) {
+        return '+++++';
+    }
+    elsif (dist < 0) {
+        return '-----';
+    }
+    elsif (dist < 100) {
         var i = math.floor(dist);
         var f = math.floor((dist - i) * 100);
         return sprintf('%2i', i) ~ smallStr(sprintf('.%02i', f)) ~ specialChars.nm;
@@ -173,6 +206,23 @@ var formatDistance = func (dist) {
     }
     else {
         return sprintf('%5i', dist) ~ specialChars.nm;
+    }
+};
+
+var formatDistanceShort = func (dist) {
+    if (dist > 9999) {
+        return '++++';
+    }
+    elsif (dist < 0) {
+        return '----';
+    }
+    if (dist < 100) {
+        var i = math.floor(dist);
+        var f = math.floor((dist - i) * 100);
+        return sprintf('%2i', i) ~ smallStr(sprintf('.%01i', f)) ~ specialChars.nm;
+    }
+    else {
+        return sprintf('%4i', dist) ~ specialChars.nm;
     }
 };
 
@@ -251,16 +301,11 @@ var NavPage = {
     new: func {
         return {
             parents: [NavPage, BasePage],
-            page: 0,
         };
-    },
-
-    redraw: func {
     },
 
     start: func {
         modeLightProp.setValue('NAV');
-        me.page = 0;
         me.redraw();
     },
 
@@ -268,28 +313,123 @@ var NavPage = {
         modeLightProp.setValue('');
     },
 
+    handleInput: func (what, amount=0) {
+        if (what == 'NAV') {
+            currentNavPage = (currentNavPage + 1) & 3;
+            me.redraw();
+            return 1;
+        }
+        elsif (what == 'data-outer') {
+            if (amount > 0) {
+                currentNavPage = (currentNavPage + amount) & 3;
+            }
+            else {
+                currentNavPage = math.max(0, currentNavPage + amount);
+            }
+            me.redraw();
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    },
+
     update: func (dt) {
         me.redraw();
     },
 
     redraw: func {
+        if (currentNavPage == 0)
+            me.redrawCDI();
+        elsif (currentNavPage == 1)
+            me.redrawPosition();
+        elsif (currentNavPage == 2)
+            me.redrawNavMenu(0);
+        elsif (currentNavPage == 3)
+            me.redrawNavMenu(1);
+    },
+
+    redrawNavMenu: func (n) {
+        putLine(0, "NAV MENU " ~ (n+1));
+        putLine(1, "--------------------");
+        putLine(2, "(not implemented)");
+    },
+
+    redrawCDI: func {
+        var mode = getprop('/instrumentation/gps/mode') or 'obs';
+        var cte = getprop('/instrumentation/gps/cdi-deflection') or 0;
+        var tgtID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '';
+        var fromID = getprop('/instrumentation/gps/wp/wp[0]/ID') or '';
+        var tgtBRG = getprop('/instrumentation/gps/wp/wp[1]/bearing-mag-deg');
+        var tgtDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
+        var legTRK = getprop('/instrumentation/gps/wp/leg-mag-course-deg');
+        var ete = getprop('/instrumentation/gps/wp/wp[1]/TTW') or '';
+        var fromFlag = getprop('/instrumentation/gps/from-flag') or 0;
+        var gs = getprop('/instrumentation/gps/indicated-ground-speed-kt') or 0;
+
+        var cdiFormatted = 'No actv wpt';
+        var gsFormatted = '___';
+        var distanceFormatted = "___" ~ smallStr('.__') ~ specialChars.nm;
+        var trackFormatted = "___";
+        var legInfo = "_____" ~ specialChars.arrowR ~ "_____";
+        var eteFormatted = "__:__";
+
+        if (tgtID != '' or mode == 'obs') {
+            var needlePos = 5 + math.min(5, math.max(-5, math.round(cte / 2)));
+            cdiFormatted = '';
+            var i = 0;
+            for (i = 0; i < needlePos; i += 1)
+                cdiFormatted ~= specialChars.dot;
+            if (fromFlag)
+                cdiFormatted ~= specialChars.arrowDn;
+            else
+                cdiFormatted ~= specialChars.arrowUp;
+            for (i = needlePos + 1; i < 11; i += 1)
+                cdiFormatted ~= specialChars.dot;
+            gsFormatted = sprintf('%3i', gs);
+            distanceFormatted = formatDistanceLong(tgtDST);
+            trackFormatted = sprintf('%03i', legTRK);
+            if (mode == 'dto') {
+                legInfo = sprintf('go to:%-5s', substr(tgtID, 0, 5));
+            }
+            elsif (mode == 'leg') {
+                legInfo = sprintf('%-5s' ~ specialChars.arrowR ~ '%-5s',
+                                substr(fromID, 0, 5), substr(tgtID, 0, 5));
+            }
+            if (ete != '')
+                eteFormatted = substr(ete, 0, 5);
+        }
+
+        putLine(0, cdiFormatted ~ " gs :" ~ gsFormatted ~ specialChars.kt);
+        putLine(1, "dis " ~ distanceFormatted ~ '  dtk ' ~ trackFormatted ~ specialChars.deg);
+        putLine(2, legInfo ~ " ete" ~ eteFormatted);
+    },
+
+    redrawPosition: func {
         var lat = getprop('/instrumentation/gps/indicated-latitude-deg') or 0;
         var lon = getprop('/instrumentation/gps/indicated-longitude-deg') or 0;
-        var refID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '----';
+        var refID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '';
         var refBRG = getprop('/instrumentation/gps/wp/wp[1]/bearing-mag-deg');
         var refDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
         var alt = getprop('/instrumentation/altimeter/indicated-altitude-ft') or 0;
 
-        var formattedLat = formatLat(lat);
-        var formattedLon = formatLon(lon);
-        var formattedDistance = formatDistance(refDST);
+        var formattedLat = '___.__°__' ~ smallStr('.___');
+        var formattedLon = '____.__°__' ~ smallStr('.___');
+        var formattedDistance = '__' ~ smallStr('.__') ~ specialChars.nm;
+        var line2 = '____ ____ ___' ~ specialChars.deg ~ formattedDistance;
         
+        if (refID != '') {
+            formattedLat = formatLat(lat);
+            formattedLon = formatLon(lon);
+            formattedDistance = formatDistance(refDST);
+            line2 = specialChars.fr ~ 'apt ' ~ sprintf('%-5s', refID) ~ ' ' ~
+                        sprintf('%03.0f', refBRG) ~ specialChars.deg ~
+                        formattedDistance;
+        }
+
         putLine(0, sprintf('alt %5.0f' ~ specialChars.ft, alt));
         putLine(1, formattedLat ~ ' ' ~ formattedLon);
-        putLine(2,
-            specialChars.fr ~ 'apt ' ~ sprintf('%-5s', refID) ~ ' ' ~
-            sprintf('%03.0f', refBRG) ~ specialChars.deg ~
-            formattedDistance);
+        putLine(2, line2);
     },
 };
 
@@ -350,6 +490,7 @@ var SatAcquirePage = {
         me.timeLeft -= dt;
 
         if (me.timeLeft <= 0) {
+            currentNavPage = 1;
             loadPage(NavPage.new());
         }
         else {
@@ -426,7 +567,7 @@ var InitializationPage = {
     },
 
     start: func {
-        putLine(0, ' GPS 155 Ver  3.06  ');
+        putLine(0, sprintf(' GPS 155 Ver %s', version));
         putLine(1, specialChars.copy ~ "1994-95 GARMIN Corp");
         putLine(2, 'Performing self test');
         me.timeLeft = 10.0;
