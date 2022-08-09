@@ -57,7 +57,7 @@
      inkscape:cx="287.94076"
      inkscape:cy="205.30386"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer3"
+     inkscape:current-layer="layer4"
      inkscape:document-rotation="0"
      showgrid="false"
      inkscape:window-width="1438"
@@ -159,15 +159,15 @@
      style="display:inline;mix-blend-mode:multiply"
      sodipodi:insensitive="true">
     <image
-       sodipodi:absref="/home/tobias/flightgear/fgdata-standalone/Aircraft/Lockheed1049h/src/AO.png"
+       sodipodi:absref="/home/tobias/devel/fg-gps155tso/src/AO.png"
        xlink:href="AO.png"
-       y="0"
-       x="0"
-       id="image1029"
-       style="stroke-width:2.25778;image-rendering:optimizeQuality"
-       preserveAspectRatio="none"
+       width="160"
        height="80"
-       width="160" />
+       preserveAspectRatio="none"
+       style="stroke-width:2.25778;image-rendering:optimizeQuality"
+       id="image1029"
+       x="0"
+       y="0" />
   </g>
   <g
      inkscape:groupmode="layer"
@@ -346,5 +346,12 @@
          x="42.5"
          y="42.200001"
          style="font-weight:bold;font-size:3.175px;text-align:center;text-anchor:middle;fill:#ffffff;stroke-width:0.264583">NRST</tspan></text>
+    <rect
+       style="fill:#00ff00;stroke:none;stroke-width:0.999996;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect1009"
+       width="14.478059"
+       height="13.114306"
+       x="146.19493"
+       y="67.656441" />
   </g>
 </svg>
