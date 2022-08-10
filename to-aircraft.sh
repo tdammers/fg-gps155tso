@@ -16,4 +16,5 @@ cp "$LOCALDIR/Models/Instruments/gps155-screen.png" "$AIRCRAFTDIR/Models/Instrum
 cp "$LOCALDIR/Models/Instruments/GPS155.png" "$AIRCRAFTDIR/Models/Instruments/"
 cp "$LOCALDIR/Models/Instruments/GPS155-lightmap.png" "$AIRCRAFTDIR/Models/Instruments/"
 cp "$LOCALDIR/Nasal/gps155.nas" "$AIRCRAFTDIR/Nasal/"
+rsync -r "$LOCALDIR/Nasal/gps155/" "$AIRCRAFTDIR/Nasal/gps155/"
 cp "$LOCALDIR/Fonts/gps155.txf" "$AIRCRAFTDIR/Fonts/"
