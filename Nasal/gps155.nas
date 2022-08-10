@@ -35,8 +35,6 @@ var specialChars = {
     'dot': utf8.chstr(0xc7),
 };
 
-var currentNavPage = 1;
-
 # Convert a regular numeric string into a small-size string, as per the GPS155
 # font.
 # The following special characters and transformations are applied:
@@ -231,12 +229,12 @@ var gpsCanvas = nil;
 var gpsScreen = nil;
 
 var charElems = [];
+var cursorElem = nil;
 var displayLineProps = [];
 var powered = 0;
 var modeLightProp = nil;
 var msgLightProp = nil;
-var modeProp = nil;
-var msgProp = nil;
+var blinkProp = nil;
 
 var dataKnobValues = { inner: 0, outer: 0 };
 var dataKnobProps = {};
@@ -255,6 +253,7 @@ var currentPage = nil;
 
 var unloadPage = func {
     if (currentPage == nil) return;
+    unsetCursor();
     currentPage.stop();
     currentPage = nil;
 };
@@ -275,6 +274,40 @@ var update = func (dt) {
     if (currentPage != nil) {
         currentPage.update(dt);
     }
+    var blinkState = blinkProp.getValue();
+    blinkState -= 1;
+    if (blinkState < 0) blinkState = 1;
+    blinkProp.setValue(blinkState);
+    updateCursorBlink();
+};
+
+var updateCursorBlink = func {
+    var blinkState = blinkProp.getValue();
+    if (cursorElem != nil) {
+        if (blinkState == 0) {
+            cursorElem.fg.setColor(0, 1, 0);
+            cursorElem.bg.setColorFill(0, 0, 0);
+        }
+        else {
+            cursorElem.fg.setColor(0, 0, 0);
+            cursorElem.bg.setColorFill(0, 1, 0);
+        }
+    }
+};
+
+var unsetCursor = func {
+    if (cursorElem) {
+        cursorElem.fg.setColor(0, 1, 0);
+        cursorElem.bg.setColorFill(0, 0, 0);
+    }
+    cursorElem = nil;
+};
+
+var setCursor = func (row, col) {
+    unsetCursor();
+    cursorElem = charElems[row][col];
+    blinkProp.setValue(2);
+    updateCursorBlink();
 };
 
 var handleInput = func (what, amount=0) {
@@ -291,21 +324,68 @@ var updateTimer = maketimer(0.5, func { update(0.5); });
 updateTimer.simulatedTime = 1;
 
 var BasePage = {
-    start: func {},
+    start: func {
+        me.selectableFields = [];
+        me.selectedField = -1;
+    },
     stop: func {},
     update: func (dt) {},
-    handleInput: func (what, amount=0) {},
+
+    handleInput: func (what, amount=0) {
+        if (what == 'CRSR') {
+            if (me.selectedField >= 0) {
+                me.selectedField = -1;
+                unsetCursor();
+                return 1;
+            }
+            elsif (size(me.selectableFields) > 0) {
+                me.selectedField = 0;
+                var field = me.selectableFields[me.selectedField];
+                setCursor(field.row, field.col);
+                return 1;
+            }
+        }
+        elsif (what == 'data-inner') {
+            if (me.selectedField >= 0) {
+                var field = me.selectableFields[me.selectedField];
+                field.changeValue(amount);
+                return 1;
+            }
+        }
+        elsif (what == 'data-outer') {
+            if (me.selectedField >= 0 and size(me.selectableFields) > 0) {
+                me.selectedField += amount;
+                while (me.selectedField < 0) {
+                    me.selectedField += size(me.selectableFields);
+                }
+                while (me.selectedField >= size(me.selectableFields)) {
+                    me.selectedField -= size(me.selectableFields);
+                }
+                var field = me.selectableFields[me.selectedField];
+                setCursor(field.row, field.col);
+                return 1;
+            }
+        }
+        else {
+            return 0;
+        }
+    },
 };
 
 var NavPage = {
     new: func {
         return {
             parents: [NavPage, BasePage],
+            selectedField: -1,
+            selectableFields: [],
         };
     },
 
+    currentSubpage: 1,
+
     start: func {
         modeLightProp.setValue('NAV');
+        me.setSelectableFields();
         me.redraw();
     },
 
@@ -313,21 +393,40 @@ var NavPage = {
         modeLightProp.setValue('');
     },
 
+    setSelectableFields: func {
+        if (NavPage.currentSubpage == 1) {
+            me.selectableFields = [
+                { row: 0, col:  0, changeValue: func {} },
+                { row: 2, col:  1, changeValue: func {} },
+            ];
+        }
+        else {
+            me.selectableFields = [];
+        }
+    },
+
     handleInput: func (what, amount=0) {
+        if (call(BasePage.handleInput, [what, amount], me)) {
+            return 1;
+        }
         if (what == 'NAV') {
-            currentNavPage = (currentNavPage + 1) & 3;
+            NavPage.currentSubpage = (NavPage.currentSubpage + 1) & 3;
+            me.setSelectableFields();
             me.redraw();
             return 1;
         }
         elsif (what == 'data-outer') {
-            if (amount > 0) {
-                currentNavPage = (currentNavPage + amount) & 3;
+            if (me.selectedField == -1) {
+                if (amount > 0) {
+                    NavPage.currentSubpage = (NavPage.currentSubpage + amount) & 3;
+                }
+                else {
+                    NavPage.currentSubpage = math.max(0, NavPage.currentSubpage + amount);
+                }
+                me.setSelectableFields();
+                me.redraw();
+                return 1;
             }
-            else {
-                currentNavPage = math.max(0, currentNavPage + amount);
-            }
-            me.redraw();
-            return 1;
         }
         else {
             return 0;
@@ -339,13 +438,13 @@ var NavPage = {
     },
 
     redraw: func {
-        if (currentNavPage == 0)
+        if (NavPage.currentSubpage == 0)
             me.redrawCDI();
-        elsif (currentNavPage == 1)
+        elsif (NavPage.currentSubpage == 1)
             me.redrawPosition();
-        elsif (currentNavPage == 2)
+        elsif (NavPage.currentSubpage == 2)
             me.redrawNavMenu(0);
-        elsif (currentNavPage == 3)
+        elsif (NavPage.currentSubpage == 3)
             me.redrawNavMenu(1);
     },
 
@@ -490,7 +589,6 @@ var SatAcquirePage = {
         me.timeLeft -= dt;
 
         if (me.timeLeft <= 0) {
-            currentNavPage = 1;
             loadPage(NavPage.new());
         }
         else {
@@ -600,13 +698,19 @@ var initialize = func {
     for (var y = 0; y < 3; y += 1) {
         append(charElems, []);
         for (var x = 0; x < 20; x += 1) {
-            append(charElems[y],
-                gpsScreen.createChild('text')
+            append(charElems[y], {
+                bg: gpsScreen.createChild('path')
+                         .rect(58 + x * 7, 2 + y * 10, 7, 9)
+                         .setColor(0, 0, 0)
+                         .setColorFill(0, 0, 0),
+                fg: gpsScreen.createChild('text')
                          .setText('?')
                          .setFont('gps155.txf')
                          .setColor(0, 1, 0)
-                         .setTranslation(59 + x * 7, 9 + y * 10)
-                         .setFontSize(7, 1));
+                         .setColorFill(0, 0, 0)
+                         .setTranslation(59 + x * 7, 10 + y * 10)
+                         .setFontSize(7, 1)
+            });
         }
     }
     for (var l = 0; l < 3; l += 1) {
@@ -617,7 +721,7 @@ var initialize = func {
             setlistener(prop, func (node) {
                 var txt = node.getValue();
                 for (var x = 0; x < 20; x += 1) {
-                    charElems[y][x].setText(
+                    charElems[y][x].fg.setText(
                         utf8.substr(txt, x, 1));
                 }
             }, 1, 0);
@@ -643,6 +747,8 @@ var initialize = func {
     }
     modeLightProp = props.globals.getNode('/instrumentation/gps155/lights/mode', 1);
     msgLightProp = props.globals.getNode('/instrumentation/gps155/lights/msg', 1);
+    blinkProp = props.globals.getNode('/instrumentation/gps155/blink-state', 1);
+    blinkProp.setValue(0);
     setlistener('controls/gps155/key', func (node) {
         var which = node.getValue();
         if (which != '') {
