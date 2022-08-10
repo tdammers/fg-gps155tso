@@ -9,6 +9,35 @@ var handleInput = func (what, amount=0) {
         }
     }
     # Page hasn't handled the key
+    if (what == 'DCT') {
+        (func (returnPage) {
+            if (visibleWaypoint != nil) {
+                # The Direct-To key automatically picks up the "current"
+                # waypoint on any page that defines one.
+                loadPage(
+                    WaypointConfirmPage.new(
+                        visibleWaypoint,
+                        # confirm
+                        func {
+                            setDTO(visibleWaypoint);
+                            NavPage.currentSubpage = 0;
+                            loadPage(NavPage.new());
+                        },
+                        # reject
+                        func {
+                            loadPage(returnPage);
+                        }
+                    ));
+            }
+            else {
+                # If no "current" waypoint is defined, fire up a waypoint
+                # selector menu (TODO).
+            }
+        })(currentPage);
+    }
+    elsif (what == 'NAV') {
+        loadPage(NavPage.new());
+    }
 };
 
 var initInput = func {

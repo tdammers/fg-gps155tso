@@ -223,4 +223,46 @@ var formatDistanceShort = func (dist) {
     }
 };
 
+var format25khz = func (freq) {
+    var i = math.floor(freq);
+    var f = math.floor((freq - i) * 100);
+    return sprintf('%-3i', i) ~ smallStr(sprintf('.%02i', f));
+};
 
+var format8_33khz = func (freq) {
+    var i = math.floor(freq);
+    var f = math.floor((freq - i) * 1000);
+    return sprintf('%-3i', i) ~ smallStr(sprintf('.%03i', f));
+};
+
+var format1khz = func (freq) {
+    var i = math.floor(freq);
+    var f = math.floor((freq - i) * 10);
+    return sprintf('%-4i', i) ~ smallStr(sprintf('.%01i', f));
+};
+
+var shorten = func (str, maxlen) {
+    if (utf8.size(str) <= maxlen)
+        return str;
+
+    var half = math.ceil((maxlen - 2) / 2);
+    return utf8.substr(str, 0, half) ~
+           '..' ~
+           utf8.substr(str, utf8.size(str) - (maxlen - 2 - half));
+};
+
+var scrollAlphabet = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_", "-" ];
+
+var scrollChar = func (str, index, amount) {
+    if (utf8.size(str) < index) return str;
+    var charNum = vecindex(scrollAlphabet, string.uc(utf8.substr(str, index, 1)));
+    if (charNum == nil)
+        charNum = 0;
+    else
+        charNum = math.mod(charNum + amount, size(scrollAlphabet));
+    str = utf8.substr(str, 0, index) ~ scrollAlphabet[charNum];
+    return str;
+};

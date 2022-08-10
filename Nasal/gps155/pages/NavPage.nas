@@ -1,19 +1,17 @@
-var refModes = ['apt', 'vor', 'ndb', 'int', 'wpt'];
-
 var NavPage = {
     new: func {
         return {
             parents: [NavPage, BasePage],
-            selectedField: -1,
-            selectableFields: [],
         };
     },
 
     currentSubpage: 1,
 
     start: func {
+        call(BasePage.start, [], me);
         modeLightProp.setValue('NAV');
         me.setSelectableFields();
+        me.updateVisibleWaypoint();
         me.redraw();
     },
 
@@ -21,29 +19,43 @@ var NavPage = {
         modeLightProp.setValue('');
     },
 
+    updateVisibleWaypoint: func {
+        if (NavPage.currentSubpage == 1) {
+            visibleWaypoint = referenceWaypoint;
+        }
+        else {
+            visibleWaypoint = nil;
+        }
+    },
+
     setSelectableFields: func {
         var self = me;
         if (NavPage.currentSubpage == 1) {
             me.selectableFields = [
-                { row: 0, col:  0, changeValue: func {} },
                 { row: 2, col:  1,
                     changeValue: func (amount) {
-                        var mode = deviceProps.referenceMode.getValue();
-                        var refModeIdx = vecindex(refModes, mode);
-                        if (refModeIdx == nil) {
-                            refModeIdx = 0;
-                        }
-                        else {
-                            refModeIdx = math.mod(refModeIdx + amount, size(refModes));
-                            if (refModeIdx < 0) {
-                                refModeIdx += size(refModes);
-                            }
-                        }
-                        deviceProps.referenceMode.setValue(refModes[refModeIdx]);
+                        changeRefMode(amount);
+                        self.updateVisibleWaypoint();
+                        self.setSelectableFields();
                         self.redraw();
                     }
                 },
             ];
+            if (deviceProps.referenceMode.getValue() == 'wpt') {
+                for (var i = 0; i < 5; i += 1) {
+                    (func (i) {
+                        append(me.selectableFields, {
+                            row: 2,
+                            col: 5 + i,
+                            changeValue: func (amount) {
+                                var str = deviceProps.referenceSearchID.getValue();
+                                deviceProps.referenceSearchID.setValue(scrollChar(str, i, amount));
+                                self.redraw();
+                            }
+                        });
+                    })(i);
+                }
+            }
         }
         else {
             me.selectableFields = [];
@@ -51,13 +63,39 @@ var NavPage = {
     },
 
     handleInput: func (what, amount=0) {
+        var self = me;
         if (call(BasePage.handleInput, [what, amount], me)) {
             return 1;
         }
         if (what == 'NAV') {
             NavPage.currentSubpage = (NavPage.currentSubpage + 1) & 3;
             me.setSelectableFields();
+            me.updateVisibleWaypoint();
             me.redraw();
+            return 1;
+        }
+        elsif (what == 'ENT' and
+               NavPage.currentSubpage == 1 and
+               deviceProps.referenceMode.getValue() == 'wpt' and
+               me.selectedField > 0) {
+            var searchID = deviceProps.referenceSearchID.getValue();
+            var candidates = positioned.sortByRange(positioned.findByIdent(searchID, 'vor,ndb,airport,fix,waypoint'));
+            debug.dump(searchID, candidates);
+            if (size(candidates) > 0) {
+                # TODO: waypoint *select* page if more than one candidate
+                loadPage(WaypointConfirmPage.new(
+                    candidates[0],
+                    func {
+                        referenceWaypoint = candidates[0];
+                        deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
+                        updateReference();
+                        loadPage(self);
+                    },
+                    func {
+                        loadPage(self);
+                    }
+                ));
+            }
             return 1;
         }
         elsif (what == 'data-outer') {
@@ -69,6 +107,7 @@ var NavPage = {
                     NavPage.currentSubpage = math.max(0, NavPage.currentSubpage + amount);
                 }
                 me.setSelectableFields();
+                me.updateVisibleWaypoint();
                 me.redraw();
                 return 1;
             }
@@ -79,6 +118,7 @@ var NavPage = {
     },
 
     update: func (dt) {
+        me.updateVisibleWaypoint();
         me.redraw();
     },
 
@@ -95,7 +135,7 @@ var NavPage = {
 
     redrawNavMenu: func (n) {
         putLine(0, "NAV MENU " ~ (n+1));
-        putLine(1, "--------------------");
+        putLine(1, "");
         putLine(2, "(not implemented)");
     },
 
@@ -133,7 +173,7 @@ var NavPage = {
             gsFormatted = sprintf('%3i', gs);
             distanceFormatted = formatDistanceLong(tgtDST);
             trackFormatted = sprintf('%03i', legTRK);
-            if (mode == 'dto') {
+            if (mode == 'dto' or (mode == 'leg' and fromID == '')) {
                 legInfo = sprintf('go to:%-5s', substr(tgtID, 0, 5));
             }
             elsif (mode == 'leg') {
@@ -152,6 +192,7 @@ var NavPage = {
     redrawPosition: func {
         var lat = getprop('/instrumentation/gps/indicated-latitude-deg') or 0;
         var lon = getprop('/instrumentation/gps/indicated-longitude-deg') or 0;
+        var searchID = deviceProps.referenceSearchID.getValue() or '';
         var refID = deviceProps.referenceID.getValue() or '';
         var refBRG = deviceProps.referenceBRG.getValue() or 0;
         var refDST = deviceProps.referenceDist.getValue() or -1;
@@ -163,6 +204,12 @@ var NavPage = {
         var formattedDistance = '__' ~ smallStr('.__') ~ sc.nm;
         var formattedBearing = '___';
         var line2 = '____ ____ ___' ~ sc.deg ~ formattedDistance;
+        var visibleID = '_____';
+
+        if (refMode == 'wpt' and me.selectedField > 0)
+            visibleID = searchID;
+        else
+            visibleID = refID;
         
         if (lat and lon) {
             formattedLat = formatLat(lat);
@@ -172,7 +219,7 @@ var NavPage = {
             formattedDistance = formatDistance(refDST);
         if (refBRG >= 0)
             formattedBearing = sprintf('%03.0f', refBRG);
-        line2 = sc.fr ~ refMode ~ ' ' ~ sprintf('%-5s', refID) ~ ' ' ~
+        line2 = sc.fr ~ refMode ~ ' ' ~ sprintf('%-5s', visibleID) ~ ' ' ~
                     formattedBearing ~ sc.deg ~
                     formattedDistance;
 
