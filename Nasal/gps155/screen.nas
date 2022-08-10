@@ -3,7 +3,6 @@ var gpsScreen = nil;
 var charElems = [];
 var cursorElem = nil;
 var displayLineProps = [];
-var powered = 0;
 var modeLightProp = nil;
 var msgLightProp = nil;
 var blinkProp = nil;

@@ -1,3 +1,5 @@
+var refModes = ['apt', 'vor', 'ndb', 'int', 'wpt'];
+
 var NavPage = {
     new: func {
         return {
@@ -20,10 +22,27 @@ var NavPage = {
     },
 
     setSelectableFields: func {
+        var self = me;
         if (NavPage.currentSubpage == 1) {
             me.selectableFields = [
                 { row: 0, col:  0, changeValue: func {} },
-                { row: 2, col:  1, changeValue: func {} },
+                { row: 2, col:  1,
+                    changeValue: func (amount) {
+                        var mode = deviceProps.referenceMode.getValue();
+                        var refModeIdx = vecindex(refModes, mode);
+                        if (refModeIdx == nil) {
+                            refModeIdx = 0;
+                        }
+                        else {
+                            refModeIdx = math.mod(refModeIdx + amount, size(refModes));
+                            if (refModeIdx < 0) {
+                                refModeIdx += size(refModes);
+                            }
+                        }
+                        deviceProps.referenceMode.setValue(refModes[refModeIdx]);
+                        self.redraw();
+                    }
+                },
             ];
         }
         else {
@@ -133,24 +152,29 @@ var NavPage = {
     redrawPosition: func {
         var lat = getprop('/instrumentation/gps/indicated-latitude-deg') or 0;
         var lon = getprop('/instrumentation/gps/indicated-longitude-deg') or 0;
-        var refID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '';
-        var refBRG = getprop('/instrumentation/gps/wp/wp[1]/bearing-mag-deg');
-        var refDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
+        var refID = deviceProps.referenceID.getValue() or '';
+        var refBRG = deviceProps.referenceBRG.getValue() or 0;
+        var refDST = deviceProps.referenceDist.getValue() or -1;
+        var refMode = deviceProps.referenceMode.getValue() or '';
         var alt = getprop('/instrumentation/altimeter/indicated-altitude-ft') or 0;
 
-        var formattedLat = '___.__°__' ~ smallStr('.___');
-        var formattedLon = '____.__°__' ~ smallStr('.___');
+        var formattedLat = '___.__' ~ sc.deg ~ '__' ~ smallStr('.___');
+        var formattedLon = '____.__' ~ sc.deg ~ '__' ~ smallStr('.___');
         var formattedDistance = '__' ~ smallStr('.__') ~ sc.nm;
+        var formattedBearing = '___';
         var line2 = '____ ____ ___' ~ sc.deg ~ formattedDistance;
         
-        if (refID != '') {
+        if (lat and lon) {
             formattedLat = formatLat(lat);
             formattedLon = formatLon(lon);
-            formattedDistance = formatDistance(refDST);
-            line2 = sc.fr ~ 'apt ' ~ sprintf('%-5s', refID) ~ ' ' ~
-                        sprintf('%03.0f', refBRG) ~ sc.deg ~
-                        formattedDistance;
         }
+        if (refDST >= 0)
+            formattedDistance = formatDistance(refDST);
+        if (refBRG >= 0)
+            formattedBearing = sprintf('%03.0f', refBRG);
+        line2 = sc.fr ~ refMode ~ ' ' ~ sprintf('%-5s', refID) ~ ' ' ~
+                    formattedBearing ~ sc.deg ~
+                    formattedDistance;
 
         putLine(0, sprintf('alt %5.0f' ~ sc.ft, alt));
         putLine(1, formattedLat ~ ' ' ~ formattedLon);

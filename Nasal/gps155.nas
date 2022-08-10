@@ -25,6 +25,7 @@ var initialize = func {
 
     initScreen();
     initInput();
+    initDevice();
 };
 
 setlistener("sim/signals/fdm-initialized", initialize);

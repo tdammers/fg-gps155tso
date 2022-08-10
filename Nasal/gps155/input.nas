@@ -36,16 +36,4 @@ var initInput = func {
             handleInput(which);
         }
     }, 1, 0);
-    setlistener('controls/gps155/power', func (node) {
-        if (node.getBoolValue()) {
-            powered = 1;
-            loadPage(InitializationPage.new());
-            updateTimer.start();
-        }
-        else {
-            powered = 0;
-            updateTimer.stop();
-            loadPage(nil);
-        }
-    }, 1, 0);
 };
