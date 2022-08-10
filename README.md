@@ -1,5 +1,11 @@
 # Garmin GPS155 TSO for FlightGear
 
+Copyright (c) 2022 Tobias Dammers (tdammers@gmail.com)
+
+This is free software; see enclosed COPYING file for licensing details.
+
+## Introduction
+
 The Garmin GPS155 TSO was one of the first GPS units to be certified for RNAV
 IFR operations in GA aircraft. Unlike most newer devices, it does not feature
 a map display; it has a text-only 20x3 character cell display, and it can drive
@@ -73,3 +79,28 @@ fluctuating randomly, until a timer runs out and the unit becomes functional.
 Likewise, just like the built-in GPS itself, the GPS155TSO does not simulate
 GPS inaccuracy; it always produces perfect lateral positioning data, and the
 altitude is read off of the first altimeter.
+
+This also means that the unit interacts with the route manager in the same way
+the built-in GPS does - there is no route editing functionality yet, but when
+flying a route entered via the route manager, and the GPS set to LEG mode, the
+GPS155TSO will display the legs on the NAV CDI page.
+
+## Development Status
+
+### Working / Done:
+
+- 3D Model
+- Font and canvas display
+- NAV CDI and NAV Position screens
+- DTO key from NAV Position screen
+- Waypoint Confirm screen
+
+### Features To Add
+
+- Waypoint Select screen
+- NRST
+- SET
+- RTE
+- WPT
+- MSG
+- Animate buttons & knobs
