@@ -6,6 +6,7 @@ var DatabaseConfirmationPage = {
     },
 
     start: func {
+        call(BasePage.start, [], me);
         putLine(0, '    WORLD IFR SUA   ');
         putLine(1, 'eff 01-jan-70 (7001)');
         putLine(2, 'exp 28-jan-70    ok?');

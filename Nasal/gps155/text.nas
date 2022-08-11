@@ -226,19 +226,19 @@ var formatDistanceShort = func (dist) {
 var format25khz = func (freq) {
     var i = math.floor(freq);
     var f = math.floor((freq - i) * 100);
-    return sprintf('%-3i', i) ~ smallStr(sprintf('.%02i', f));
+    return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f));
 };
 
 var format8_33khz = func (freq) {
     var i = math.floor(freq);
     var f = math.floor((freq - i) * 1000);
-    return sprintf('%-3i', i) ~ smallStr(sprintf('.%03i', f));
+    return sprintf('%3i', i) ~ smallStr(sprintf('.%03i', f));
 };
 
 var format1khz = func (freq) {
     var i = math.floor(freq);
     var f = math.floor((freq - i) * 10);
-    return sprintf('%-4i', i) ~ smallStr(sprintf('.%01i', f));
+    return sprintf('%4i', i) ~ smallStr(sprintf('.%01i', f));
 };
 
 var shorten = func (str, maxlen) {

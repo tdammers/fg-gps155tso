@@ -8,6 +8,7 @@ var SatPage = {
     },
 
     start: func {
+        call(BasePage.start, [], me);
         me.satellites = [];
         var satsUsed = {};
         var n = 0;

@@ -9,6 +9,7 @@ var WaypointConfirmPage = {
     },
 
     start: func {
+        call(BasePage.start, [], me);
         me.redraw();
     },
 

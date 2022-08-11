@@ -7,6 +7,7 @@ var InitializationPage = {
     },
 
     start: func {
+        call(BasePage.start, [], me);
         putLine(0, sprintf(' GPS 155 Ver %s', version));
         putLine(1, sc.copy ~ "1994-95 GARMIN Corp");
         putLine(2, 'Performing self test');

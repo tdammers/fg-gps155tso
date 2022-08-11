@@ -62,6 +62,35 @@ var NavPage = {
         }
     },
 
+    confirmWaypoint: func (waypoint) {
+        var self = me;
+        loadPage(WaypointConfirmPage.new(
+            waypoint,
+            func {
+                referenceWaypoint = waypoint;
+                deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
+                updateReference();
+                loadPage(self);
+            },
+            func {
+                loadPage(self);
+            }
+        ));
+    },
+
+    selectWaypoint: func (waypoints) {
+        var self = me;
+        loadPage(WaypointSelectPage.new(
+            waypoints,
+            func (wp) {
+                self.confirmWaypoint(wp);
+            },
+            func {
+                loadPage(self);
+            }
+        ));
+    },
+
     handleInput: func (what, amount=0) {
         var self = me;
         if (call(BasePage.handleInput, [what, amount], me)) {
@@ -80,21 +109,11 @@ var NavPage = {
                me.selectedField > 0) {
             var searchID = deviceProps.referenceSearchID.getValue();
             var candidates = positioned.sortByRange(positioned.findByIdent(searchID, 'vor,ndb,airport,fix,waypoint'));
-            debug.dump(searchID, candidates);
-            if (size(candidates) > 0) {
-                # TODO: waypoint *select* page if more than one candidate
-                loadPage(WaypointConfirmPage.new(
-                    candidates[0],
-                    func {
-                        referenceWaypoint = candidates[0];
-                        deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
-                        updateReference();
-                        loadPage(self);
-                    },
-                    func {
-                        loadPage(self);
-                    }
-                ));
+            if (size(candidates) > 1) {
+                me.selectWaypoint(candidates);
+            }
+            elsif (size(candidates) == 1) {
+                me.confirmWaypoint(candidates[0]);
             }
             return 1;
         }
