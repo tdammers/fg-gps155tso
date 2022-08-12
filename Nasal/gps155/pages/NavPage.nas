@@ -1,26 +1,33 @@
 var NavPage = {
     new: func {
-        return {
-            parents: [NavPage, BasePage],
-        };
+        var m = MultiPage.new(deviceProps.currentPage.nav, 'NAV', 0);
+        m.parents = [NavPage] ~ m.parents;
+        return m;
     },
 
-    currentSubpage: 1,
+    SUBPAGE_CDI: 0,
+    SUBPAGE_POSITION: 1,
+    SUBPAGE_MENU1: 2,
+    SUBPAGE_MENU2: 3,
+
+    getNumPages: func { return 2; },
 
     start: func {
-        call(BasePage.start, [], me);
+        call(MultiPage.start, [], me);
         modeLightProp.setValue('NAV');
-        me.setSelectableFields();
-        me.updateVisibleWaypoint();
-        me.redraw();
     },
 
     stop: func {
+        call(MultiPage.stop, [], me);
         modeLightProp.setValue('');
     },
 
+    handleSubpageChange: func {
+        me.updateVisibleWaypoint();
+    },
+
     updateVisibleWaypoint: func {
-        if (NavPage.currentSubpage == 1) {
+        if (me.getCurrentPage() == 1) {
             visibleWaypoint = referenceWaypoint;
         }
         else {
@@ -30,7 +37,7 @@ var NavPage = {
 
     setSelectableFields: func {
         var self = me;
-        if (NavPage.currentSubpage == 1) {
+        if (me.getCurrentPage() == 1) {
             me.selectableFields = [
                 { row: 2, col:  1,
                     changeValue: func (amount) {
@@ -93,18 +100,11 @@ var NavPage = {
 
     handleInput: func (what, amount=0) {
         var self = me;
-        if (call(BasePage.handleInput, [what, amount], me)) {
-            return 1;
-        }
-        if (what == 'NAV') {
-            NavPage.currentSubpage = (NavPage.currentSubpage + 1) & 3;
-            me.setSelectableFields();
-            me.updateVisibleWaypoint();
-            me.redraw();
+        if (call(MultiPage.handleInput, [what, amount], me)) {
             return 1;
         }
         elsif (what == 'ENT' and
-               NavPage.currentSubpage == 1 and
+               me.getCurrentPage() == 1 and
                deviceProps.referenceMode.getValue() == 'wpt' and
                me.selectedField > 0) {
             var searchID = deviceProps.referenceSearchID.getValue();
@@ -117,20 +117,6 @@ var NavPage = {
             }
             return 1;
         }
-        elsif (what == 'data-outer') {
-            if (me.selectedField == -1) {
-                if (amount > 0) {
-                    NavPage.currentSubpage = (NavPage.currentSubpage + amount) & 3;
-                }
-                else {
-                    NavPage.currentSubpage = math.max(0, NavPage.currentSubpage + amount);
-                }
-                me.setSelectableFields();
-                me.updateVisibleWaypoint();
-                me.redraw();
-                return 1;
-            }
-        }
         else {
             return 0;
         }
@@ -142,13 +128,13 @@ var NavPage = {
     },
 
     redraw: func {
-        if (NavPage.currentSubpage == 0)
+        if (me.getCurrentPage() == 0)
             me.redrawCDI();
-        elsif (NavPage.currentSubpage == 1)
+        elsif (me.getCurrentPage() == 1)
             me.redrawPosition();
-        elsif (NavPage.currentSubpage == 2)
+        elsif (me.getCurrentPage() == 2)
             me.redrawNavMenu(0);
-        elsif (NavPage.currentSubpage == 3)
+        elsif (me.getCurrentPage() == 3)
             me.redrawNavMenu(1);
     },
 

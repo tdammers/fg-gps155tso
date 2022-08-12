@@ -285,6 +285,13 @@ var initDevice = func {
     setPropDefault(deviceProps.settings.units.pressure, 'hpa');
     setPropDefault(deviceProps.settings.units.temperature, 'degC');
 
+    deviceProps['currentPage'] = {
+        nav: props.globals.getNode('instrumentation/gps155/currentPage/nav', 1),
+        set: props.globals.getNode('instrumentation/gps155/currentPage/set', 1),
+    };
+    setPropDefault(deviceProps.currentPage.nav, 0);
+    setPropDefault(deviceProps.currentPage.set, 0);
+
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');
 

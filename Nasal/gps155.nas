@@ -18,6 +18,7 @@ var initialize = func {
     include('input.nas');
     include('device.nas');
     include('pages/BasePage.nas');
+    include('pages/MultiPage.nas');
     include('pages/DatabaseConfirmationPage.nas');
     include('pages/InitializationPage.nas');
     include('pages/NavPage.nas');

@@ -3,7 +3,9 @@ var BasePage = {
         me.selectableFields = [];
         me.selectedField = -1;
     },
-    stop: func {},
+    stop: func {
+        unsetCursor();
+    },
     update: func (dt) {},
 
     handleInput: func (what, amount=0) {

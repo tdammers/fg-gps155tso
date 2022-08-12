@@ -1,26 +1,29 @@
 var SettingsPage = {
-    new: func () {
-        return {
-            parents: [SettingsPage, BasePage],
-        };
+    new: func {
+        var m = MultiPage.new(deviceProps.currentPage.set, 'SET');
+        m.parents = [SettingsPage] ~ m.parents;
+        return m;
     },
-
-    currentSubpage: 0,
 
     SUBPAGE_SAT_STATUS: 0,
     SUBPAGE_NAV_UNITS: 1,
     SUBPAGE_NUM: 2,
 
+    getNumPages: func { return 2; },
+
     start: func {
-        call(BasePage.start, [], me);
+        call(MultiPage.start, [], me);
         modeLightProp.setValue('SET');
-        me.setSelectableFields();
-        me.redraw();
+    },
+
+    stop: func {
+        call(MultiPage.stop, [], me);
+        modeLightProp.setValue('');
     },
 
     setSelectableFields: func {
         var self = me;
-        if (SettingsPage.currentSubpage == SettingsPage.SUBPAGE_NAV_UNITS) {
+        if (me.getCurrentPage() == SettingsPage.SUBPAGE_NAV_UNITS) {
             me.selectableFields = [
                 { row: 0, col: 5,
                   changeValue: func(amount) {
@@ -94,10 +97,10 @@ var SettingsPage = {
     },
 
     redraw: func {
-        if (SettingsPage.currentSubpage == SettingsPage.SUBPAGE_NAV_UNITS) {
+        if (me.getCurrentPage() == SettingsPage.SUBPAGE_NAV_UNITS) {
             me.redrawNavUnits();
         }
-        elsif (SettingsPage.currentSubpage == SettingsPage.SUBPAGE_SAT_STATUS) {
+        elsif (me.getCurrentPage() == SettingsPage.SUBPAGE_SAT_STATUS) {
             me.redrawSatStatus();
         }
         else {
@@ -128,23 +131,7 @@ var SettingsPage = {
     },
 
     handleInput: func (what, amount) {
-        if (call(BasePage.handleInput, [what, amount], me)) {
-            return 1;
-        }
-        elsif (what == 'SET') {
-            SettingsPage.currentSubpage =
-                math.mod(SettingsPage.currentSubpage + 1, SettingsPage.SUBPAGE_NUM);
-            me.selectedField = -1;
-            unsetCursor();
-            me.redraw();
-            return 1;
-        }
-        elsif (what == 'data-outer') {
-            SettingsPage.currentSubpage =
-                math.mod(SettingsPage.currentSubpage + amount, SettingsPage.SUBPAGE_NUM);
-            me.selectedField = -1;
-            unsetCursor();
-            me.redraw();
+        if (call(MultiPage.handleInput, [what, amount], me)) {
             return 1;
         }
         else {
