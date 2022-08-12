@@ -14,29 +14,8 @@ var WaypointConfirmPage = {
     },
 
     redraw: func {
-        var extraInfo = '';
-        var type = '';
-        if (ghosttype(me.waypoint) == 'airport') {
-        }
-        elsif (me.waypoint.type == 'VOR') {
-            extraInfo = format25khz(me.waypoint.frequency / 100);
-        }
-        elsif (me.waypoint.type == 'NDB') {
-            extraInfo = format1khz(me.waypoint.frequency / 100);
-        }
-        var db = getWaypointDistanceAndBearing(me.waypoint);
-        putLine(0,
-            sprintf("%-3s %-5s %-11s",
-                getWaypointType(me.waypoint, 1),
-                substr(me.waypoint.id, 0, 5),
-                extraInfo));
-        putLine(1,
-            sprintf(' %3i' ~ sc.deg ~ ' %5s',
-                db.bearing,
-                formatDistance(db.distance)));
-        putLine(2,
-            sprintf(' %-15s ok?',
-                shorten(me.waypoint.name, 15)));
+        var lines = formatWaypointInfo(me.waypoint, '', 'ok?');
+        putScreen(lines);
     },
 
     handleInput: func (what, amount) {

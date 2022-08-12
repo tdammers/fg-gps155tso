@@ -11,6 +11,12 @@ var putLine = func (row, str) {
     displayLineProps[row].setValue(str);
 };
 
+var putScreen = func (strs) {
+    for (var i = 0; i < 3; i += 1) {
+        putLine(i, strs[i]);
+    }
+};
+
 var clearScreen = func () {
     displayLineProps[0].setValue('');
     displayLineProps[1].setValue('');

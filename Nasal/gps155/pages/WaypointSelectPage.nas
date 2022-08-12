@@ -16,17 +16,6 @@ var WaypointSelectPage = {
 
     redraw: func {
         var waypoint = me.waypoints[me.selectedWP];
-        var extraInfo = '';
-        var type = '';
-        if (ghosttype(waypoint) == 'airport') {
-        }
-        elsif (waypoint.type == 'VOR') {
-            extraInfo = format25khz(waypoint.frequency / 100);
-        }
-        elsif (waypoint.type == 'NDB') {
-            extraInfo = format1khz(waypoint.frequency / 100);
-        }
-        var db = getWaypointDistanceAndBearing(waypoint);
         var number = me.selectedWP + 1;
         var formattedNumber = '';
         if (number < 10) {
@@ -35,19 +24,7 @@ var WaypointSelectPage = {
         else {
             formattedNumber = '#' ~ number;
         }
-        putLine(0,
-            sprintf("%4s %-3s %-5s %-7s",
-                formattedNumber,
-                getWaypointType(waypoint, 1),
-                substr(waypoint.id, 0, 5),
-                extraInfo));
-        putLine(1,
-            sprintf(' %3i' ~ sc.deg ~ ' %5s',
-                db.bearing,
-                formatDistance(db.distance)));
-        putLine(2,
-            sprintf(' %-20s',
-                shorten(waypoint.name, 20)));
+        putScreen(formatWaypointInfo(waypoint, formattedNumber));
     },
 
     handleInput: func (what, amount) {

@@ -167,6 +167,136 @@ var formatLon = func (lat) {
               smallStr(sprintf('.%03i\'', minutesFrac));
 };
 
+formatWaypointInfo = func (waypoint, indexStr = '', promptStr = '') {
+    var extraInfo0 = '';
+    var extraInfo1 = '';
+    var extraInfo2 = waypoint.name;
+
+    var line0 = '';
+    var line1 = '';
+    var line2 = '';
+
+    var type = '';
+    if (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport') {
+        var apinfo = airportinfo(waypoint.id);
+        extraInfo0 = formatAltitude(waypoint.elevation);
+        var twrStation = nil;
+        var ctfStation = nil;
+        var uniStation = nil;
+        foreach (var commStation; waypoint.comms()) {
+            # debug.dump(commStation.name ~ ' ' ~ commStation.frequency);
+            if (twrStation == nil and
+                (commStation.name == 'TWR' or
+                    string.imatch(commStation.name, '* TWR') or
+                    string.imatch(commStation.name, '*Tower*'))) {
+                twrStation = commStation;
+            }
+            elsif (ctfStation == nil and
+                (commStation.name == 'RADIO' or
+                    string.imatch(commStation.name, 'CTAF*') or
+                    string.imatch(commStation.name, '* RADIO'))) {
+                ctfStation = commStation;
+            }
+            elsif (uniStation == nil and
+                (commStation.name == 'UNICOM') or
+                 string.imatch(commStation.name, '* UNICOM')) {
+                uniStation = commStation;
+            }
+        }
+        if (twrStation != nil)
+            extraInfo1 = 'twr' ~ format8_33khz(twrStation.frequency);
+        elsif (uniStation != nil)
+            extraInfo1 = 'uni' ~ format8_33khz(uniStation.frequency);
+        elsif (ctfStation != nil)
+            extraInfo1 = 'ctf' ~ format8_33khz(ctfStation.frequency);
+        if (promptStr == '') {
+            var longestLength = 0;
+            var bestRunway = nil;
+            foreach (var idx; keys(apinfo.runways)) {
+                var runway = apinfo.runways[idx];
+                if (runway.length > longestLength) {
+                    bestRunway = runway;
+                }
+            }
+            if (bestRunway != nil) {
+                if (bestRunway.reciprocal == nil) {
+                    extraInfo2 = 
+                        sprintf('rnwy %-3s      %6s',
+                            bestRunway.id,
+                            formatRunwayLength(bestRunway.length, 'm'));
+                }
+                else {
+                    if (bestRunway.heading > bestRunway.reciprocal.heading)
+                        bestRunway = bestRunway.reciprocal;
+                    extraInfo2 = 
+                        sprintf('rnwy %-3s/%-3s %5s',
+                            bestRunway.id,
+                            bestRunway.reciprocal.id,
+                            formatRunwayLength(bestRunway.length, 'm'));
+                }
+            }
+        }
+    }
+    elsif (waypoint.type == 'VOR') {
+        extraInfo0 = format25khz(waypoint.frequency / 100);
+    }
+    elsif (waypoint.type == 'NDB') {
+        extraInfo0 = format1khz(waypoint.frequency / 100);
+    }
+    var db = getWaypointDistanceAndBearing(waypoint);
+    if (indexStr == '')
+        line0 =
+            sprintf("%-3s %-5s %-11s",
+                getWaypointType(waypoint, 1),
+                substr(waypoint.id, 0, 5),
+                extraInfo0);
+    else
+        line0 =
+            sprintf("%-3s %-3s %-5s %-7s",
+                indexStr,
+                getWaypointType(waypoint, 1),
+                substr(waypoint.id, 0, 5),
+                extraInfo0);
+    line1 =
+        sprintf(' %4s%5s %-9s',
+            formatHeading(db.bearing),
+            formatDistanceShort(db.distance),
+            extraInfo1);
+    if (promptStr == '')
+        line2 =
+            sprintf(' %-20s',
+                shorten(extraInfo2, 20));
+    else
+        line2 =
+            sprintf(' %-15s %3s',
+                shorten(extraInfo2, 15),
+                promptStr);
+    return [line0, line1, line2];
+};
+
+formatAltitude = func (alt, inUnits='ft') {
+    var inFactor = 1;
+    if (inUnits = 'm')
+        inFactor = M2FT;
+    return sprintf('%5i' ~ sc.ft, alt * inFactor);
+};
+
+formatRunwayLength = func (len, inUnits='ft') {
+    var inFactor = 1;
+    if (inUnits = 'm')
+        inFactor = M2FT;
+    return sprintf('%5i' ~ sc.ft, math.floor(len * inFactor));
+};
+
+formatHeading = func (hdg) {
+    hdg = math.round(geo.normdeg(hdg));
+    if (hdg < 1)
+        hdg += 360;
+    if (hdg >= 361)
+        hdg -= 360;
+    return sprintf('%03i' ~ sc.deg, hdg);
+};
+
 var formatDistanceLong = func (dist) {
     if (dist > 999999) {
         return '++++++';
@@ -215,24 +345,27 @@ var formatDistanceShort = func (dist) {
     }
     if (dist < 100) {
         var i = math.floor(dist);
-        var f = math.floor((dist - i) * 100);
-        return sprintf('%2i', i) ~ smallStr(sprintf('.%01i', f)) ~ sc.nm;
+        var f = math.floor((dist - i) * 10);
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ sc.nm;
     }
     else {
-        return sprintf('%4i', dist) ~ sc.nm;
+        return sprintf('%4i', math.round(dist)) ~ sc.nm;
     }
 };
 
 var format25khz = func (freq) {
     var i = math.floor(freq);
-    var f = math.floor((freq - i) * 100);
+    var f = math.floor((freq - i) * 100 + 0.05);
     return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f));
 };
 
 var format8_33khz = func (freq) {
-    var i = math.floor(freq);
-    var f = math.floor((freq - i) * 1000);
-    return sprintf('%3i', i) ~ smallStr(sprintf('.%03i', f));
+    var i = math.floor(freq - 100);
+    var f = math.round((freq - 100 - i) * 1000);
+    if (math.mod(math.round(freq * 1000), 25) == 0)
+        return ' ' ~ format25khz(freq);
+    else
+        return smallStr('`1') ~ sprintf('%02i', i) ~ smallStr(sprintf('.%03i', f));
 };
 
 var format1khz = func (freq) {
