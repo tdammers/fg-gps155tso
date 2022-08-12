@@ -7,7 +7,9 @@ var SettingsPage = {
 
     currentSubpage: 0,
 
-    SUBPAGE_NAV_UNITS: 0,
+    SUBPAGE_SAT_STATUS: 0,
+    SUBPAGE_NAV_UNITS: 1,
+    SUBPAGE_NUM: 2,
 
     start: func {
         call(BasePage.start, [], me);
@@ -93,24 +95,36 @@ var SettingsPage = {
 
     redraw: func {
         if (SettingsPage.currentSubpage == SettingsPage.SUBPAGE_NAV_UNITS) {
-            putLine(0,
-                sprintf('posn %-3s alt %1s %3s',
-                    unitSymbol(deviceProps.settings.units.position.getValue()),
-                    unitSymbol(deviceProps.settings.units.altitude.getValue()),
-                    unitSymbol(deviceProps.settings.units.vspeed.getValue())));
-            putLine(1,
-                sprintf('nav  %1s %1s fuel %1s',
-                    unitSymbol(deviceProps.settings.units.distance.getValue()),
-                    unitSymbol(deviceProps.settings.units.speed.getValue()),
-                    unitSymbol(deviceProps.settings.units.fuel.getValue())));
-            putLine(2,
-                sprintf('pres %1s   temp %1s',
-                    unitSymbol(deviceProps.settings.units.pressure.getValue()),
-                    unitSymbol(deviceProps.settings.units.temperature.getValue())));
+            me.redrawNavUnits();
+        }
+        elsif (SettingsPage.currentSubpage == SettingsPage.SUBPAGE_SAT_STATUS) {
+            me.redrawSatStatus();
         }
         else {
             clearScreen();
         }
+    },
+
+    redrawSatStatus: func {
+        var status = deviceProps.receiver.status.getValue() or 0;
+        putScreen(formatSatStatus(status, satellites));
+    },
+
+    redrawNavUnits: func {
+        putLine(0,
+            sprintf('posn %-3s alt %1s %3s',
+                unitSymbol(deviceProps.settings.units.position.getValue()),
+                unitSymbol(deviceProps.settings.units.altitude.getValue()),
+                unitSymbol(deviceProps.settings.units.vspeed.getValue())));
+        putLine(1,
+            sprintf('nav  %1s %1s fuel %1s',
+                unitSymbol(deviceProps.settings.units.distance.getValue()),
+                unitSymbol(deviceProps.settings.units.speed.getValue()),
+                unitSymbol(deviceProps.settings.units.fuel.getValue())));
+        putLine(2,
+            sprintf('pres %1s   temp %1s',
+                unitSymbol(deviceProps.settings.units.pressure.getValue()),
+                unitSymbol(deviceProps.settings.units.temperature.getValue())));
     },
 
     handleInput: func (what, amount) {
@@ -118,11 +132,19 @@ var SettingsPage = {
             return 1;
         }
         elsif (what == 'SET') {
-            # TODO: cycle settings pages
+            SettingsPage.currentSubpage =
+                math.mod(SettingsPage.currentSubpage + 1, SettingsPage.SUBPAGE_NUM);
+            me.selectedField = -1;
+            unsetCursor();
+            me.redraw();
             return 1;
         }
         elsif (what == 'data-outer') {
-            # TODO: cycle settings pages
+            SettingsPage.currentSubpage =
+                math.mod(SettingsPage.currentSubpage + amount, SettingsPage.SUBPAGE_NUM);
+            me.selectedField = -1;
+            unsetCursor();
+            me.redraw();
             return 1;
         }
         else {

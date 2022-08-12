@@ -274,6 +274,27 @@ formatWaypointInfo = func (waypoint, indexStr = '', promptStr = '') {
     return [line0, line1, line2];
 };
 
+var formatSatStatus = func(status, satellites) {
+    var identLine = 'sat ';
+    var sglLine = 'sgl ';
+    var totalStrength = 0;
+    foreach (var sat; satellites) {
+        identLine ~= smallStr(sprintf('`%2i', sat.ident));
+        sglLine ~= smallStr(sprintf('`%2i', math.round(sat.sgl * 10)));
+        totalStrength += sat.sgl;
+    }
+
+    var epe = 100 / totalStrength; # TODO: proper EPE calculation
+
+    return [
+        sprintf('%-11s epe%5s',
+            receiverStatusTexts[status],
+            string.trim(formatRunwayLength(epe))),
+        identLine,
+        sglLine,
+    ];
+};
+
 var degF2degC = func (f) {
     return (f-32) / 1.8;
 };

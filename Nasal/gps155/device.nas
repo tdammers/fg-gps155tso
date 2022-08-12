@@ -8,6 +8,22 @@ var visibleWaypoint = nil;
 var referenceWaypoint = nil;
 
 var powered = 0;
+var satellites = [];
+var satsUsed = {};
+var n = 0;
+for (var i = 0; i < 7; i += 1) {
+    n = math.floor(rand() * 32) + 1;
+    while (contains(satsUsed, n)) {
+        printf("%i already in list", n);
+        n = math.floor(rand() * 32) + 1;
+    }
+    printf("new sat: %i", n);
+    satsUsed[n] = 1;
+    append(satellites, {
+        ident: n,
+        sgl: rand(),
+    });
+}
 
 var deviceProps = {};
 
@@ -66,6 +82,7 @@ var update = func (dt) {
     blinkProp.setValue(blinkState);
     updateCursorBlink();
     updateReference();
+    updateReceiver(dt);
 };
 
 var waypointTypesToFixTypes = {
@@ -179,6 +196,41 @@ var setPropDefault = func (prop, default) {
     }
 };
 
+var RECEIVER_STATUS_SEARCH_SKY = -2;
+var RECEIVER_STATUS_ACQUIRING = -1;
+var RECEIVER_STATUS_OFF = 0;
+var RECEIVER_STATUS_2DNAV = 1;
+var RECEIVER_STATUS_3DNAV = 2;
+
+var receiverStatusTexts = {};
+receiverStatusTexts[RECEIVER_STATUS_SEARCH_SKY] = 'Search Sky';
+receiverStatusTexts[RECEIVER_STATUS_ACQUIRING] = 'Acquiring';
+receiverStatusTexts[RECEIVER_STATUS_OFF] = 'Not usable';
+receiverStatusTexts[RECEIVER_STATUS_2DNAV] = '2D Nav';
+receiverStatusTexts[RECEIVER_STATUS_3DNAV] = '3D Nav';
+
+var updateReceiver = func (dt) {
+    if (powered) {
+        var status = deviceProps.receiver.status.getValue();
+        if (status == RECEIVER_STATUS_ACQUIRING) {
+            var t = deviceProps.receiver.acquiringTimeLeft.getValue() or 0;
+            t -= dt;
+            if (t <= 0) {
+                t = 0;
+                deviceProps.receiver.status.setValue(RECEIVER_STATUS_3DNAV);
+            }
+            deviceProps.receiver.acquiringTimeLeft.setValue(t);
+        }
+        foreach (var sat; satellites) {
+            sat.sgl += (rand() - 0.5) * dt * 0.1;
+            sat.sgl = math.max(0, math.min(1, sat.sgl));
+        }
+    }
+    else {
+        deviceProps.receiver.status.setValue(RECEIVER_STATUS_OFF);
+    }
+};
+
 var initDevice = func {
     # Set up some shared properties
 
@@ -198,6 +250,16 @@ var initDevice = func {
     deviceProps['referenceLat'].setValue(0);
     deviceProps['referenceLon'] = props.globals.getNode('instrumentation/gps155/reference/longitude-deg', 1);
     deviceProps['referenceLon'].setValue(0);
+    deviceProps['powered'] = props.globals.getNode('instrumentation/gps155/powered', 1);
+    setPropDefault(deviceProps.powered, 0);
+    deviceProps['receiver'] = {
+        status: props.globals.getNode('instrumentation/gps155/receiver/status', 1),
+        statusText: props.globals.getNode('instrumentation/gps155/receiver/status-text', 1),
+        acquiringTimeLeft: props.globals.getNode('instrumentation/gps155/receiver/acquiring-time-left', 1),
+    };
+    setPropDefault(deviceProps.receiver.status, RECEIVER_STATUS_OFF);
+    setPropDefault(deviceProps.receiver.statusText, 'Not usable');
+    setPropDefault(deviceProps.receiver.acquiringTimeLeft, 0);
 
     deviceProps['settings'] = {
         units: {
@@ -234,11 +296,15 @@ var initDevice = func {
             powered = 1;
             loadPage(InitializationPage.new());
             updateTimer.start();
+            deviceProps.receiver.status.setValue(RECEIVER_STATUS_ACQUIRING);
+            deviceProps.receiver.acquiringTimeLeft.setValue(5); # debug
+            # deviceProps.receiver.acquiringTimeLeft.setValue((rand() * 300) + 120);
         }
         else {
             powered = 0;
             updateTimer.stop();
             loadPage(nil);
+            deviceProps.receiver.status.setValue(RECEIVER_STATUS_OFF);
         }
     }, 1, 0);
 };
