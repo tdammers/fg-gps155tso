@@ -37,7 +37,18 @@ With that said, the installation method goes something like this:
    ```
    This will load the GPS155's main entry point; all the other scripts are
    loaded automatically from there.
-3. Add the 3D model to your cockpit. This can be achieved by adding something
+3. If you want the GPS155TSO to persist settings between FG sessions, add the
+   following to your `aircraft-set.xml` (merge with existing `<sim>` and
+   `<aircraft-data>` elements, if any):
+   element:
+   ```xml
+   <sim>
+      <aircraft-data>
+        <path>instrumentation/gps155/settings</path>
+      </aircraft-data>
+   </sim>
+   ```
+4. Add the 3D model to your cockpit. This can be achieved by adding something
    like the following to your cockpit model XML:
    ```xml
     <model>
