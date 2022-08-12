@@ -13,19 +13,24 @@ var deviceProps = {};
 
 var refModes = ['apt', 'vor', 'ndb', 'int', 'wpt'];
 
-var changeRefMode = func (amount = 1) {
-    var mode = deviceProps.referenceMode.getValue();
-    var refModeIdx = vecindex(refModes, mode);
-    if (refModeIdx == nil) {
-        refModeIdx = 0;
+var cycleValue = func (val, items, amount = 1) {
+    var idx = vecindex(items, val);
+    if (idx == nil) {
+        idx = 0;
     }
     else {
-        refModeIdx = math.mod(refModeIdx + amount, size(refModes));
-        if (refModeIdx < 0) {
-            refModeIdx += size(refModes);
+        idx = math.mod(idx + amount, size(items));
+        if (idx < 0) {
+            idx += size(items);
         }
     }
-    deviceProps.referenceMode.setValue(refModes[refModeIdx]);
+    return items[idx];
+};
+
+var changeRefMode = func (amount = 1) {
+    var mode = deviceProps.referenceMode.getValue();
+    mode = cycleValue(mode, refModes, amount);
+    deviceProps.referenceMode.setValue(mode);
 };
 
 var unloadPage = func {
@@ -164,6 +169,12 @@ var getWaypointDistanceAndBearing = func (waypoint) {
 var updateTimer = maketimer(0.5, func { update(0.5); });
 updateTimer.simulatedTime = 1;
 
+var setPropDefault = func (prop, default) {
+    if (prop.getValue() == nil or prop.getValue() == '') {
+        prop.setValue(default);
+    }
+};
+
 var initDevice = func {
     # Set up some shared properties
 
@@ -183,6 +194,24 @@ var initDevice = func {
     deviceProps['referenceLat'].setValue(0);
     deviceProps['referenceLon'] = props.globals.getNode('instrumentation/gps155/reference/longitude-deg', 1);
     deviceProps['referenceLon'].setValue(0);
+
+    deviceProps['settings'] = {
+        units: {
+            altitude: props.globals.getNode('instrumentation/gps155/settings/units/altitude', 1),
+            speed: props.globals.getNode('instrumentation/gps155/settings/units/speed', 1),
+            distance: props.globals.getNode('instrumentation/gps155/settings/units/distance', 1),
+            runwayLength: props.globals.getNode('instrumentation/gps155/settings/units/runway-length', 1),
+            fuel: props.globals.getNode('instrumentation/gps155/settings/units/fuel', 1),
+            pressure: props.globals.getNode('instrumentation/gps155/settings/units/pressure', 1),
+        }
+    };
+
+    setPropDefault(deviceProps.settings.units.altitude, 'ft');
+    setPropDefault(deviceProps.settings.units.speed, 'kt');
+    setPropDefault(deviceProps.settings.units.distance, 'nm');
+    setPropDefault(deviceProps.settings.units.runwayLength, 'ft');
+    setPropDefault(deviceProps.settings.units.fuel, 'lbs');
+    setPropDefault(deviceProps.settings.units.pressure, 'hpa');
 
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');

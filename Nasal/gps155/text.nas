@@ -274,18 +274,91 @@ formatWaypointInfo = func (waypoint, indexStr = '', promptStr = '') {
     return [line0, line1, line2];
 };
 
-formatAltitude = func (alt, inUnits='ft') {
-    var inFactor = 1;
-    if (inUnits = 'm')
-        inFactor = M2FT;
-    return sprintf('%5i' ~ sc.ft, alt * inFactor);
+var degF2degC = func (f) {
+    return (f-32) / 1.8;
 };
 
-formatRunwayLength = func (len, inUnits='ft') {
-    var inFactor = 1;
-    if (inUnits = 'm')
-        inFactor = M2FT;
-    return sprintf('%5i' ~ sc.ft, math.floor(len * inFactor));
+var degC2degF = func (c) {
+    return c*1.8 + 32;
+};
+
+var units = {
+    # Lengths (distance, altitude, ...); canonical unit: m
+    'm':  { inFactor:    1, outFactor: 1, symbol: sc.mt },
+    'ft': { inFactor: FT2M, outFactor: 1, symbol: sc.ft },
+    'km': { inFactor: 1000, outFactor: 1/1000, symbol: sc.km },
+    'nm': { inFactor: NM2M, outFactor: M2NM, symbol: sc.nm },
+    'mi': { inFactor: 1608.344, outFactor: 1/1608.344, symbol: sc.mi },
+
+    # Speeds; canonical unit: m/s
+    'kt': { inFactor: KT2MPS, outFactor: MPS2KT, symbol: sc.kt },
+    'kmh': { inFactor: 3600/1000, outFactor: 1000/3600, symbol: sc.kh },
+    'mph': { inFactor: 3600/1608.344, outFactor: 1608.344/3600, symbol: sc.mh },
+
+    # Vertical speeds; canonical unit: m/s
+    'mps': { inFactor: 1, outFactor: 1, symbol: 'mps' },
+    'mpm': { inFactor: 60, outFactor: 1/60, symbol: 'mpm' },
+    'fps': { inFactor: FT2M, outFactor: M2FT, symbol: 'fps' },
+    'fpm': { inFactor: FT2M * 60, outFactor: M2FT / 60, symbol: 'fpm' },
+
+    # Pressure; canonical unit: hPa
+    'hpa': { inFactor: 1, outFactor: 1, symbol: sc.mb, format: '%4.0f' },
+    'mbar': { inFactor: 1, outFactor: 1, symbol: sc.mb, format: '%4.0f' },
+    'inhg': { inFactor: 1013.25/29.921, outFactor: 29.921/1013.25, symbol: sc.hg, format: '%2.2f' },
+
+    # Temperature; canonical unit: °C
+    'degC': { inFactor: 1, outFactor: 1, symbol: sc.degC },
+    'degF': { inFactor: degF2degC, outFactor: degC2degF, symbol: sc.degF },
+};
+
+convertUnits = func (val, inUnit, outUnit) {
+    if (inUnit == outUnit)
+        return val;
+
+    var inFactor = units[inUnit].inFactor;
+    var outFactor = units[outUnit].outFactor;
+
+    if (typeof(inFactor) == 'func') {
+        val = inFactor(val);
+    }
+    else {
+        val *= inFactor;
+    }
+    if (typeof(outFactor) == 'func') {
+        val = outFactor(val);
+    }
+    else {
+        val *= outFactor;
+    }
+    return val;
+};
+
+formatTemperature = func (temp, inUnit='degC') {
+    var outUnit = deviceProps.settings.units.temperature.getValue() or 'degC';
+    var displayValue = convertUnits(temp, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+    return sprintf('%3i' ~ symbol, displayValue);
+};
+
+formatAltitude = func (alt, inUnit='ft') {
+    var outUnit = deviceProps.settings.units.altitude.getValue() or 'ft';
+    var displayValue = convertUnits(alt, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+    return sprintf('%5i' ~ symbol, displayValue);
+};
+
+formatSpeed = func (speed, inUnit='kts') {
+    var outUnit = deviceProps.settings.units.speed.getValue() or 'kts';
+    var displayValue = convertUnits(speed, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+    return sprintf('%4i' ~ symbol, displayValue);
+};
+
+formatRunwayLength = func (len, inUnit='ft') {
+    var outUnit = deviceProps.settings.units.runwayLength.getValue() or 'ft';
+    var displayValue = convertUnits(len, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+    return sprintf('%5i' ~ symbol, displayValue);
 };
 
 formatHeading = func (hdg) {
@@ -297,59 +370,77 @@ formatHeading = func (hdg) {
     return sprintf('%03i' ~ sc.deg, hdg);
 };
 
-var formatDistanceLong = func (dist) {
-    if (dist > 999999) {
+var formatDistanceLong = func (dist, inUnit='nm') {
+    var outUnit = deviceProps.settings.units.distance.getValue() or 'ft';
+    var displayValue = convertUnits(dist, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+
+    if (displayValue > 999999) {
         return '++++++';
     }
-    elsif (dist < 0) {
+    elsif (displayValue < 0) {
         return '------';
     }
-    elsif (dist < 1000) {
-        var i = math.floor(dist);
-        var f = math.floor((dist - i) * 100);
-        return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f)) ~ sc.nm;
+    elsif (displayValue < 1000) {
+        var i = math.floor(displayValue);
+        var f = math.floor((displayValue - i) * 100);
+        return sprintf('%4i', i) ~ smallStr(sprintf('.%02i', f)) ~ symbol;
+    }
+    elsif (displayValue < 10000) {
+        var i = math.floor(displayValue);
+        var f = math.floor((displayValue - i) * 100);
+        return sprintf('%5i', i) ~ smallStr(sprintf('.%01i', f)) ~ symbol;
     }
     else {
-        return sprintf('%6i', dist) ~ sc.nm;
+        return sprintf('%6i', displayValue) ~ symbol;
     }
 };
 
-var formatDistance = func (dist) {
-    if (dist > 99999) {
+var formatDistance = func (dist, inUnit='nm') {
+    var outUnit = deviceProps.settings.units.distance.getValue() or 'ft';
+    var displayValue = convertUnits(dist, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+
+    if (displayValue > 99999) {
         return '+++++';
     }
-    elsif (dist < 0) {
+    elsif (displayValue < 0) {
         return '-----';
     }
-    elsif (dist < 100) {
-        var i = math.floor(dist);
-        var f = math.floor((dist - i) * 100);
-        return sprintf('%2i', i) ~ smallStr(sprintf('.%02i', f)) ~ sc.nm;
+    elsif (displayValue < 100) {
+        var i = math.floor(displayValue);
+        var f = math.floor((displayValue - i) * 100);
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f)) ~ symbol;
     }
-    elsif (dist < 1000) {
-        var i = math.floor(dist);
-        var f = math.floor((dist - i) * 10);
-        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ sc.nm;
+    elsif (displayValue < 1000) {
+        var i = math.floor(displayValue);
+        var f = math.floor((displayValue - i) * 10);
+        return sprintf('%4i', i) ~ smallStr(sprintf('.%01i', f)) ~ symbol;
     }
     else {
-        return sprintf('%5i', dist) ~ sc.nm;
+        return sprintf('%5i', displayValue) ~ symbol;
     }
 };
 
 var formatDistanceShort = func (dist) {
-    if (dist > 9999) {
+    var inUnit = 'nm';
+    var outUnit = deviceProps.settings.units.distance.getValue() or 'ft';
+    var displayValue = convertUnits(dist, inUnit, outUnit);
+    var symbol = units[outUnit].symbol;
+
+    if (displayValue > 9999) {
         return '++++';
     }
-    elsif (dist < 0) {
+    elsif (displayValue < 0) {
         return '----';
     }
-    if (dist < 100) {
-        var i = math.floor(dist);
-        var f = math.floor((dist - i) * 10);
-        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ sc.nm;
+    if (displayValue < 100) {
+        var i = math.floor(displayValue);
+        var f = math.floor((displayValue - i) * 10);
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ symbol;
     }
     else {
-        return sprintf('%4i', math.round(dist)) ~ sc.nm;
+        return sprintf('%4i', math.round(displayValue)) ~ symbol;
     }
 };
 

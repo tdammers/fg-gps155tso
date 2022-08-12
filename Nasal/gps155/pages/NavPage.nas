@@ -171,7 +171,7 @@ var NavPage = {
         var gs = getprop('/instrumentation/gps/indicated-ground-speed-kt') or 0;
 
         var cdiFormatted = 'No actv wpt';
-        var gsFormatted = '___';
+        var gsFormatted = '___ ';
         var distanceFormatted = "___" ~ smallStr('.__') ~ sc.nm;
         var trackFormatted = "___";
         var legInfo = "_____" ~ sc.arrowR ~ "_____";
@@ -189,9 +189,9 @@ var NavPage = {
                 cdiFormatted ~= sc.arrowUp;
             for (i = needlePos + 1; i < 11; i += 1)
                 cdiFormatted ~= sc.dot;
-            gsFormatted = sprintf('%3i', gs);
-            distanceFormatted = formatDistanceLong(tgtDST);
-            trackFormatted = sprintf('%03i', legTRK);
+            gsFormatted = formatSpeed(gs, 'kt');
+            distanceFormatted = formatDistance(tgtDST);
+            trackFormatted = formatHeading(legTRK);
             if (mode == 'dto' or (mode == 'leg' and fromID == '')) {
                 legInfo = sprintf('go to:%-5s', substr(tgtID, 0, 5));
             }
@@ -203,8 +203,8 @@ var NavPage = {
                 eteFormatted = substr(ete, 0, 5);
         }
 
-        putLine(0, cdiFormatted ~ " gs :" ~ gsFormatted ~ sc.kt);
-        putLine(1, "dis " ~ distanceFormatted ~ '  dtk ' ~ trackFormatted ~ sc.deg);
+        putLine(0, cdiFormatted ~ " gs :" ~ gsFormatted);
+        putLine(1, "dis " ~ distanceFormatted ~ '  dtk ' ~ trackFormatted);
         putLine(2, legInfo ~ " ete" ~ eteFormatted);
     },
 
@@ -220,7 +220,7 @@ var NavPage = {
 
         var formattedLat = '___.__' ~ sc.deg ~ '__' ~ smallStr('.___');
         var formattedLon = '____.__' ~ sc.deg ~ '__' ~ smallStr('.___');
-        var formattedDistance = '__' ~ smallStr('.__') ~ sc.nm;
+        var formattedDistance = '__' ~ smallStr('.__') ~ '_';
         var formattedBearing = '___';
         var line2 = '____ ____ ___' ~ sc.deg ~ formattedDistance;
         var visibleID = '_____';
@@ -235,14 +235,14 @@ var NavPage = {
             formattedLon = formatLon(lon);
         }
         if (refDST >= 0)
-            formattedDistance = formatDistance(refDST);
+            formattedDistance = formatDistanceShort(refDST);
         if (refBRG >= 0)
             formattedBearing = sprintf('%03.0f', refBRG);
         line2 = sc.fr ~ refMode ~ ' ' ~ sprintf('%-5s', visibleID) ~ ' ' ~
                     formattedBearing ~ sc.deg ~
                     formattedDistance;
 
-        putLine(0, sprintf('alt %5.0f' ~ sc.ft, alt));
+        putLine(0, sprintf('alt %6s', formatAltitude(alt)));
         putLine(1, formattedLat ~ ' ' ~ formattedLon);
         putLine(2, line2);
     },
