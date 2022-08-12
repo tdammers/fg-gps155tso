@@ -38,6 +38,9 @@ var handleInput = func (what, amount=0) {
     elsif (what == 'NAV') {
         loadPage(NavPage.new());
     }
+    elsif (what == 'SET') {
+        loadPage(SettingsPage.new());
+    }
 };
 
 var initInput = func {

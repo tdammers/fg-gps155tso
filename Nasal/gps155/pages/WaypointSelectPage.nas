@@ -44,5 +44,8 @@ var WaypointSelectPage = {
             me.reject();
             return 1;
         }
+        else {
+            return 0;
+        }
     },
 };

@@ -282,7 +282,13 @@ var degC2degF = func (c) {
     return c*1.8 + 32;
 };
 
+var fuelDensity = 718.9585645;
+
 var units = {
+    # Position (lat/lon)
+    'dm': { inFactor: 1, outFactor: 1, symbol: 'dm' },
+    'dms': { inFactor: 1, outFactor: 1, symbol: 'dms' },
+
     # Lengths (distance, altitude, ...); canonical unit: m
     'm':  { inFactor:    1, outFactor: 1, symbol: sc.mt },
     'ft': { inFactor: FT2M, outFactor: 1, symbol: sc.ft },
@@ -309,6 +315,24 @@ var units = {
     # Temperature; canonical unit: °C
     'degC': { inFactor: 1, outFactor: 1, symbol: sc.degC },
     'degF': { inFactor: degF2degC, outFactor: degC2degF, symbol: sc.degF },
+
+    # Fuel; canonical unit: kg
+    'kg': { inFactor: 1, outFactor: 1, symbol: sc.kg },
+    'lbs': { inFactor: LB2KG, outFactor: LB2KG, symbol: sc.lb },
+    'lt': { inFactor: 0.001 * fuelDensity, outFactor: 1000 / fuelDensity, symbol: sc.lt },
+    'l': { inFactor: 0.001 * fuelDensity, outFactor: 1000 / fuelDensity, symbol: sc.lt },
+    'gal': { inFactor: GAL2L * 0.001 * fuelDensity
+           , outFactor: L2GAL * 1000 / fuelDensity
+           , symbol: sc.gl
+           },
+    'igal': { inFactor: 4.54609 * 0.001 * fuelDensity
+            , outFactor: 1000 / 4.54609 / fuelDensity
+            , symbol: sc.ig
+            },
+};
+
+unitSymbol = func (unit) {
+    return units[unit].symbol;
 };
 
 convertUnits = func (val, inUnit, outUnit) {

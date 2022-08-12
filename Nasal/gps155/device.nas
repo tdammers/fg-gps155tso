@@ -27,10 +27,14 @@ var cycleValue = func (val, items, amount = 1) {
     return items[idx];
 };
 
+var cycleProp = func (prop, items, amount = 1) {
+    var val = prop.getValue();
+    val = cycleValue(val, items, amount);
+    prop.setValue(val);
+};
+
 var changeRefMode = func (amount = 1) {
-    var mode = deviceProps.referenceMode.getValue();
-    mode = cycleValue(mode, refModes, amount);
-    deviceProps.referenceMode.setValue(mode);
+    cycleProp(deviceProps.referenceMode, refModes, amount);
 };
 
 var unloadPage = func {
@@ -197,21 +201,27 @@ var initDevice = func {
 
     deviceProps['settings'] = {
         units: {
+            position: props.globals.getNode('instrumentation/gps155/settings/units/position', 1),
             altitude: props.globals.getNode('instrumentation/gps155/settings/units/altitude', 1),
             speed: props.globals.getNode('instrumentation/gps155/settings/units/speed', 1),
+            vspeed: props.globals.getNode('instrumentation/gps155/settings/units/vertical-speed', 1),
             distance: props.globals.getNode('instrumentation/gps155/settings/units/distance', 1),
             runwayLength: props.globals.getNode('instrumentation/gps155/settings/units/runway-length', 1),
             fuel: props.globals.getNode('instrumentation/gps155/settings/units/fuel', 1),
             pressure: props.globals.getNode('instrumentation/gps155/settings/units/pressure', 1),
+            temperature: props.globals.getNode('instrumentation/gps155/settings/units/temperature', 1),
         }
     };
 
+    setPropDefault(deviceProps.settings.units.position, 'dm');
     setPropDefault(deviceProps.settings.units.altitude, 'ft');
     setPropDefault(deviceProps.settings.units.speed, 'kt');
+    setPropDefault(deviceProps.settings.units.vspeed, 'fpm');
     setPropDefault(deviceProps.settings.units.distance, 'nm');
     setPropDefault(deviceProps.settings.units.runwayLength, 'ft');
     setPropDefault(deviceProps.settings.units.fuel, 'lbs');
     setPropDefault(deviceProps.settings.units.pressure, 'hpa');
+    setPropDefault(deviceProps.settings.units.temperature, 'degC');
 
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');

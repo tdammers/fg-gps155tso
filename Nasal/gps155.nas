@@ -24,6 +24,7 @@ var initialize = func {
     include('pages/SatPage.nas');
     include('pages/WaypointConfirmPage.nas');
     include('pages/WaypointSelectPage.nas');
+    include('pages/SettingsPage.nas');
 
     initScreen();
     initInput();
