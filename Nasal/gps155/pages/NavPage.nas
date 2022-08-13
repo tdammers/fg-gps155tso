@@ -69,35 +69,6 @@ var NavPage = {
         }
     },
 
-    confirmWaypoint: func (waypoint) {
-        var self = me;
-        loadPage(WaypointConfirmPage.new(
-            waypoint,
-            func {
-                referenceWaypoint = waypoint;
-                deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
-                updateReference();
-                loadPage(self);
-            },
-            func {
-                loadPage(self);
-            }
-        ));
-    },
-
-    selectWaypoint: func (waypoints) {
-        var self = me;
-        loadPage(WaypointSelectPage.new(
-            waypoints,
-            func (wp) {
-                self.confirmWaypoint(wp);
-            },
-            func {
-                loadPage(self);
-            }
-        ));
-    },
-
     handleInput: func (what, amount=0) {
         var self = me;
         if (call(MultiPage.handleInput, [what, amount], me)) {
@@ -108,13 +79,12 @@ var NavPage = {
                deviceProps.referenceMode.getValue() == 'wpt' and
                me.selectedField > 0) {
             var searchID = deviceProps.referenceSearchID.getValue();
-            var candidates = positioned.sortByRange(positioned.findByIdent(searchID, 'vor,ndb,airport,fix,waypoint'));
-            if (size(candidates) > 1) {
-                me.selectWaypoint(candidates);
-            }
-            elsif (size(candidates) == 1) {
-                me.confirmWaypoint(candidates[0]);
-            }
+
+            searchAndConfirmWaypoint(searchID, self, func (waypoint) {
+                referenceWaypoint = waypoint;
+                deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
+                updateReference();
+            });
             return 1;
         }
         else {
@@ -179,11 +149,11 @@ var NavPage = {
             distanceFormatted = formatDistance(tgtDST);
             trackFormatted = formatHeading(legTRK);
             if (mode == 'dto' or (mode == 'leg' and fromID == '')) {
-                legInfo = sprintf('go to:%-5s', substr(tgtID, 0, 5));
+                legInfo = sprintf('go to:%-5s', navid5(tgtID));
             }
             elsif (mode == 'leg') {
                 legInfo = sprintf('%-5s' ~ sc.arrowR ~ '%-5s',
-                                substr(fromID, 0, 5), substr(tgtID, 0, 5));
+                                navid5(fromID), navid5(tgtID));
             }
             if (ete != '')
                 eteFormatted = substr(ete, 0, 5);

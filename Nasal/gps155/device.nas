@@ -187,6 +187,43 @@ var getWaypointDistanceAndBearing = func (waypoint) {
     }
 };
 
+confirmWaypoint = func (waypoint, self, handle) {
+    loadPage(WaypointConfirmPage.new(
+        waypoint,
+        func {
+            handle(waypoint);
+            loadPage(self);
+        },
+        func {
+            loadPage(self);
+        }
+    ));
+};
+
+selectWaypoint = func (waypoints, self, handle) {
+    loadPage(WaypointSelectPage.new(
+        waypoints,
+        func (wp) {
+            confirmWaypoint(wp, self, handle);
+        },
+        func {
+            loadPage(self);
+        }
+    ));
+};
+
+searchAndConfirmWaypoint = func (searchID, self, handle) {
+    var candidates = positioned.sortByRange(positioned.findByIdent(searchID, 'vor,ndb,airport,fix,waypoint'));
+    if (size(candidates) > 1) {
+        selectWaypoint(candidates, self, handle);
+    }
+    elsif (size(candidates) == 1) {
+        confirmWaypoint(candidates[0], self, handle);
+    }
+};
+
+
+
 var updateTimer = nil;
 
 var setPropDefault = func (prop, default) {
