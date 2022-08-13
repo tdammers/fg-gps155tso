@@ -300,6 +300,22 @@ var initDevice = func {
 
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');
+    deviceProps['wp'] = [
+        {
+            ident: props.globals.getNode('instrumentation/gps/wp/wp[0]/ID'),
+            altitude: props.globals.getNode('instrumentation/gps/wp/wp[0]/altitude-ft'),
+            latitude: props.globals.getNode('instrumentation/gps/wp/wp[0]/latitude-deg'),
+            longitude: props.globals.getNode('instrumentation/gps/wp/wp[0]/longitude-deg'),
+            name: props.globals.getNode('instrumentation/gps/wp/wp[0]/name'),
+        },
+        {
+            ident: props.globals.getNode('instrumentation/gps/wp/wp[1]/ID'),
+            altitude: props.globals.getNode('instrumentation/gps/wp/wp[1]/altitude-ft'),
+            latitude: props.globals.getNode('instrumentation/gps/wp/wp[1]/latitude-deg'),
+            longitude: props.globals.getNode('instrumentation/gps/wp/wp[1]/longitude-deg'),
+            name: props.globals.getNode('instrumentation/gps/wp/wp[1]/name'),
+        },
+    ];
 
     setlistener(deviceProps['referenceMode'], updateReference);
 

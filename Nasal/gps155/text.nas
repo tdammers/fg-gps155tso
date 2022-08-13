@@ -520,6 +520,16 @@ var shorten = func (str, maxlen) {
            utf8.substr(str, utf8.size(str) - (maxlen - 2 - half));
 };
 
+var navid5 = func (str) {
+    if (utf8.size(str) <= 5) return str;
+    if (string.match(str, '*-*')) {
+        return utf8.substr(str, 0, 4);
+    }
+    else {
+        return utf8.substr(str, 0, 5);
+    }
+};
+
 var scrollAlphabet = [
     " ",
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",

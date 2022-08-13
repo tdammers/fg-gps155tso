@@ -41,6 +41,9 @@ var handleInput = func (what, amount=0) {
     elsif (what == 'SET') {
         loadPage(SettingsPage.new());
     }
+    elsif (what == 'RTE') {
+        loadPage(RoutePage.new());
+    }
 };
 
 var initInput = func {
