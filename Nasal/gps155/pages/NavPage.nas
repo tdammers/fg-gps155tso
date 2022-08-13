@@ -41,7 +41,40 @@ var NavPage = {
             me.selectableFields = [
                 { row: 2, col: 6,
                     changeValue: func (amount) {},
-                }
+                    erase: func {
+                        var mode = deviceProps.mode.getValue();
+                        if (mode == 'dto' and flightplan() != nil and flightplan().getPlanSize() > 1) {
+                            deviceProps.command.setValue('leg');
+                        }
+                        else {
+                            deviceProps.command.setValue('obs');
+                        }
+                    }
+                },
+                { row: 0, col: 12,
+                    changeValue: func (amount) {
+                        cycleProp(deviceProps.settings.fields.cdi.gs,
+                            ['gs', 'str'],
+                            amount);
+                        self.redraw();
+                    }
+                },
+                { row: 1, col: 12,
+                    changeValue: func (amount) {
+                        cycleProp(deviceProps.settings.fields.cdi.trk,
+                            ['trk', 'brg', 'dtk'], # TODO: cts, trn
+                            amount);
+                        self.redraw();
+                    }
+                },
+                { row: 2, col: 12,
+                    changeValue: func (amount) {
+                        cycleProp(deviceProps.settings.fields.cdi.ete,
+                            ['eta', 'ete', 'trk'], # TODO: vn
+                            amount);
+                        self.redraw();
+                    }
+                },
             ];
         }
         elsif (me.getCurrentPage() == NavPage.SUBPAGE_POSITION) {
@@ -123,12 +156,15 @@ var NavPage = {
         var cte = getprop('/instrumentation/gps/cdi-deflection') or 0;
         var tgtID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '';
         var fromID = getprop('/instrumentation/gps/wp/wp[0]/ID') or '';
+        var fromFlag = getprop('/instrumentation/gps/from-flag') or 0;
+
         var tgtBRG = getprop('/instrumentation/gps/wp/wp[1]/bearing-mag-deg');
         var tgtDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
         var legTRK = getprop('/instrumentation/gps/wp/leg-mag-course-deg');
         var ete = getprop('/instrumentation/gps/wp/wp[1]/TTW') or '';
-        var fromFlag = getprop('/instrumentation/gps/from-flag') or 0;
         var gs = getprop('/instrumentation/gps/indicated-ground-speed-kt') or 0;
+        var cte = getprop('/instrumentation/gps/wp/wp[1]/course-error-nm') or 0;
+        var trk = getprop('/instrumentation/gps/indicated-track-magnetic-deg') or 0;
 
         var cdiFormatted = 'No actv wpt';
         var gsFormatted = '___ ';
@@ -149,23 +185,64 @@ var NavPage = {
                 cdiFormatted ~= sc.arrowUp;
             for (i = needlePos + 1; i < 11; i += 1)
                 cdiFormatted ~= sc.dot;
-            gsFormatted = formatSpeed(gs, 'kt');
-            distanceFormatted = formatDistance(tgtDST);
-            trackFormatted = formatHeading(legTRK);
-            if (mode == 'dto' or (mode == 'leg' and fromID == '')) {
+            if (mode != 'obs')
+                distanceFormatted = formatDistance(tgtDST);
+            if (mode == 'dto') {
                 legInfo = sprintf('go to:%-5s', navid5(tgtID));
             }
             elsif (mode == 'leg') {
                 legInfo = sprintf('%-5s' ~ sc.arrowR ~ '%-5s',
                                 navid5(fromID), navid5(tgtID));
             }
-            if (ete != '')
-                eteFormatted = substr(ete, 0, 5);
         }
 
-        putLine(0, cdiFormatted ~ " gs :" ~ gsFormatted);
-        putLine(1, "dis " ~ distanceFormatted ~ '  dtk ' ~ trackFormatted);
-        putLine(2, legInfo ~ " ete" ~ eteFormatted);
+        var formatCDIField = func (type) {
+            var mode = deviceProps.mode.getValue();
+            if (type == 'gs') {
+                return 'gs ' ~ formatSpeed(gs, 'kt');
+            }
+            elsif (type == 'str') {
+                var deviation = formatDistanceShort(math.abs(cte));
+                if (cte < -0.01)
+                    return 'strL' ~ deviation;
+                elsif (cte > 0.01)
+                    return 'strR' ~ deviation;
+                else
+                    return 'strC' ~ deviation;
+            }
+            elsif (type == 'trk') {
+                return 'trk ' ~ formatHeading(trk);
+            }
+            elsif (type == 'brg') {
+                if (mode == 'obs')
+                    return 'brg ____';
+                else
+                    return 'brg ' ~ formatHeading(tgtBRG);
+            }
+            elsif (type == 'dtk') {
+                if (mode == 'obs')
+                    return 'dtk ____';
+                else
+                    return 'dtk ' ~ formatHeading(legTRK);
+            }
+            elsif (type == 'ete') {
+                return 'ete' ~ substr(ete or '__:__', 0, 5);
+            }
+            else {
+                # TODO: dis, cts, trn, vn
+                return sprintf('%-3s ____', type);
+            }
+        };
+
+        var formattedFields = {};
+        foreach (var f; ['gs', 'trk', 'ete']) {
+            var mode = deviceProps.settings.fields.cdi[f].getValue();
+            formattedFields[f] = formatCDIField(mode);
+        }
+
+        putLine(0, cdiFormatted ~ " " ~ formattedFields.gs);
+        putLine(1, "dis " ~ distanceFormatted ~ '  ' ~ formattedFields.trk);
+        putLine(2, legInfo ~ " " ~ formattedFields.ete);
     },
 
     redrawPosition: func {

@@ -65,21 +65,21 @@ var RoutePage = {
 
     redraw: func {
         var fp = flightplan();
-        var from = deviceProps.wp[0].ident.getValue() or '';
-        var to = deviceProps.wp[1].ident.getValue() or '';
+        var fromID = deviceProps.wp[0].ident.getValue() or '';
+        var tgtID = deviceProps.wp[1].ident.getValue() or '';
+        var mode = deviceProps.mode.getValue() or 'obs';
+        var legInfo = '_____' ~ sc.arrowR ~ '_____';
 
         var lines = ['', 'NO ACTIVE ROUTE', ''];
-        var legStr = '_____' ~ sc.arrowR ~ '_____';
+        if (mode == 'dto') {
+            legInfo = sprintf('go to:%-5s', navid5(tgtID));
+        }
+        elsif (mode == 'leg') {
+            legInfo = sprintf('%-5s' ~ sc.arrowR ~ '%-5s',
+                            navid5(fromID), navid5(tgtID));
+        }
 
-        if (from != '')
-            legStr = sprintf('%-5s' ~ sc.arrowR ~ '%-5s',
-                navid5(from),
-                navid5(to));
-        elsif (to != '')
-            legStr = sprintf('go to:%-5s',
-                navid5(to));
-
-        lines[0] = sprintf('%-11s leg dtk', legStr);
+        lines[0] = sprintf('%-11s leg dtk', legInfo);
 
         if (fp != nil and fp.getPlanSize() > 1) {
             for (var y = 0; y < 2; y += 1) {
@@ -185,6 +185,11 @@ var RoutePage = {
                     fp.insertWPAfter(leg, RoutePage.scrollPos);
                 RoutePage.scrollPos += 1;
             });
+        }
+        elsif (what == 'ENT' and deviceProps.mode.getValue() != 'leg') {
+            deviceProps.command.setValue('leg');
+            # TODO: find closest leg
+            me.redraw();
         }
         elsif (what == 'CLR' and me.deletingWaypoint) {
             me.deletingWaypoint = 0;

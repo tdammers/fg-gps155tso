@@ -30,6 +30,9 @@ var deviceProps = {};
 var refModes = ['apt', 'vor', 'ndb', 'int', 'wpt'];
 
 var cycleValue = func (val, items, amount = 1) {
+    if (size(items) == 0) return '';
+    if (val == nil)
+        val = items[0];
     var idx = vecindex(items, val);
     if (idx == nil) {
         idx = 0;
@@ -315,6 +318,14 @@ var initDevice = func {
             fuel: props.globals.getNode('instrumentation/gps155/settings/units/fuel', 1),
             pressure: props.globals.getNode('instrumentation/gps155/settings/units/pressure', 1),
             temperature: props.globals.getNode('instrumentation/gps155/settings/units/temperature', 1),
+        },
+        fields: {
+            cdi: {
+                gs: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/gs', 1),
+                dist: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/dist', 1),
+                trk: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/trk', 1),
+                ete: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/ete', 1),
+            },
         }
     };
 
@@ -337,6 +348,7 @@ var initDevice = func {
 
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');
+    deviceProps['mode'] = props.globals.getNode('instrumentation/gps/mode');
     deviceProps['wp'] = [
         {
             ident: props.globals.getNode('instrumentation/gps/wp/wp[0]/ID'),
