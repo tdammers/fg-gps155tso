@@ -187,8 +187,7 @@ var getWaypointDistanceAndBearing = func (waypoint) {
     }
 };
 
-var updateTimer = maketimer(0.5, func { update(0.5); });
-updateTimer.simulatedTime = 1;
+var updateTimer = nil;
 
 var setPropDefault = func (prop, default) {
     if (prop.getValue() == nil or prop.getValue() == '') {
@@ -232,8 +231,15 @@ var updateReceiver = func (dt) {
 };
 
 var initDevice = func {
-    # Set up some shared properties
+    # Clean up for reloading purposes
+    if (updateTimer != nil) {
+        updateTimer.stop();
+    }
 
+    updateTimer = maketimer(0.5, func { update(0.5); });
+    updateTimer.simulatedTime = 1;
+
+    # Set up some shared properties
     deviceProps['referenceMode'] = props.globals.getNode('instrumentation/gps155/reference/mode', 1);
     deviceProps['referenceMode'].setValue('apt');
     deviceProps['referenceID'] = props.globals.getNode('instrumentation/gps155/reference/id', 1);

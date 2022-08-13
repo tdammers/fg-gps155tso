@@ -7,14 +7,24 @@ var include = func (basename) {
     io.load_nasal(path, 'gps155');
 }
 
+var listeners = [];
+var setlistener = func (node, code, init=0, type=1) {
+    append(listeners, globals.setlistener(node, code, init, type));
+};
+
+var removelistener = func (l) {
+    if (l == nil) return;
+    var i = vecindex(listeners, l);
+    if (i != nil) {
+        listeners = subvec(listeners, 0, i) ~ subvec(listeners, i+1);
+    }
+    globals.removelistener(l);
+};
+
 var initialized = 0;
 
-var initialize = func {
-    if (initialized) return;
-    initialized = 1;
-
+var loadIncludes = func {
     include('text.nas');
-    include('screen.nas');
     include('input.nas');
     include('device.nas');
     include('pages/BasePage.nas');
@@ -26,10 +36,32 @@ var initialize = func {
     include('pages/WaypointConfirmPage.nas');
     include('pages/WaypointSelectPage.nas');
     include('pages/SettingsPage.nas');
+    include('pages/RoutePage.nas');
+};
+
+var initialize = func {
+    if (initialized) return;
+    initialized = 1;
+
+    include('screen.nas');
+    loadIncludes();
 
     initScreen();
     initInput();
     initDevice();
 };
 
-setlistener("sim/signals/fdm-initialized", initialize);
+globals.setlistener("sim/signals/fdm-initialized", initialize);
+
+var reload = func {
+    # clean up first
+    foreach (var l; listeners) {
+        globals.removelistener(l);
+    }
+    listeners = [];
+
+    loadIncludes();
+
+    initInput();
+    initDevice();
+};

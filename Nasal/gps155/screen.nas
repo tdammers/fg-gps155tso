@@ -84,7 +84,7 @@ var initScreen = func {
             var prop = props.globals.getNode('/instrumentation/gps155/display/line[' ~ y ~ ']', 1);
             prop.setValue('');
             append(displayLineProps, prop);
-            setlistener(prop, func (node) {
+            globals.setlistener(prop, func (node) {
                 var txt = node.getValue();
                 for (var x = 0; x < 20; x += 1) {
                     charElems[y][x].fg.setText(
