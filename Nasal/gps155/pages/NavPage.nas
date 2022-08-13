@@ -37,7 +37,14 @@ var NavPage = {
 
     setSelectableFields: func {
         var self = me;
-        if (me.getCurrentPage() == 1) {
+        if (me.getCurrentPage() == NavPage.SUBPAGE_CDI) {
+            me.selectableFields = [
+                { row: 2, col: 6,
+                    changeValue: func (amount) {},
+                }
+            ];
+        }
+        elsif (me.getCurrentPage() == NavPage.SUBPAGE_POSITION) {
             me.selectableFields = [
                 { row: 2, col:  1,
                     changeValue: func (amount) {
@@ -58,6 +65,16 @@ var NavPage = {
                                 var str = deviceProps.referenceSearchID.getValue();
                                 deviceProps.referenceSearchID.setValue(scrollChar(str, i, amount));
                                 self.redraw();
+                            },
+                            accept: func {
+                                var searchID = deviceProps.referenceSearchID.getValue();
+
+                                searchAndConfirmWaypoint(searchID, self, func (waypoint) {
+                                    referenceWaypoint = waypoint;
+                                    deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
+                                    updateReference();
+                                });
+                                return 1;
                             }
                         });
                     })(i);
@@ -72,19 +89,6 @@ var NavPage = {
     handleInput: func (what, amount=0) {
         var self = me;
         if (call(MultiPage.handleInput, [what, amount], me)) {
-            return 1;
-        }
-        elsif (what == 'ENT' and
-               me.getCurrentPage() == 1 and
-               deviceProps.referenceMode.getValue() == 'wpt' and
-               me.selectedField > 0) {
-            var searchID = deviceProps.referenceSearchID.getValue();
-
-            searchAndConfirmWaypoint(searchID, self, func (waypoint) {
-                referenceWaypoint = waypoint;
-                deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
-                updateReference();
-            });
             return 1;
         }
         else {
@@ -181,7 +185,7 @@ var NavPage = {
         var line2 = '____ ____ ___' ~ sc.deg ~ formattedDistance;
         var visibleID = '_____';
 
-        if (refMode == 'wpt' and me.selectedField > 0)
+        if (refMode == 'wpt' and me.selectedField > 0 and me.selectedField < 5)
             visibleID = searchID;
         else
             visibleID = refID;

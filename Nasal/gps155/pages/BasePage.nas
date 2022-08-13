@@ -25,8 +25,28 @@ var BasePage = {
         elsif (what == 'data-inner') {
             if (me.selectedField >= 0) {
                 var field = me.selectableFields[me.selectedField];
-                field.changeValue(amount);
-                return 1;
+                if (contains(field, 'changeValue')) {
+                    field.changeValue(amount);
+                    return 1;
+                }
+            }
+        }
+        elsif (what == 'CLR') {
+            if (me.selectedField >= 0) {
+                var field = me.selectableFields[me.selectedField];
+                if (contains(field, 'erase')) {
+                    field.erase();
+                    return 1;
+                }
+            }
+        }
+        elsif (what == 'ENT') {
+            if (me.selectedField >= 0) {
+                var field = me.selectableFields[me.selectedField];
+                if (contains(field, 'accept')) {
+                    field.accept();
+                    return 1;
+                }
             }
         }
         elsif (what == 'data-outer') {
