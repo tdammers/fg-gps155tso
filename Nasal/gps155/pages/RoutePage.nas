@@ -7,6 +7,7 @@ var RoutePage = {
         };
     },
 
+    scrollResetTimer: 0,
     scrollPos: 0,
 
     start: func {
@@ -14,7 +15,6 @@ var RoutePage = {
         modeLightProp.setValue('RTE');
         var fp = flightplan();
         if (fp != nil) {
-            RoutePage.scrollPos = fp.current;
             var idx = RoutePage.scrollPos + 1;
             if (idx < fp.getPlanSize()) {
                 me.editableWaypointID = fp.getWP(idx).id;
@@ -50,7 +50,16 @@ var RoutePage = {
         }
     },
 
-    update: func {
+    update: func (dt) {
+        var fp = flightplan();
+        if (me.selectedField < 0 and fp != nil) {
+            RoutePage.scrollResetTimer -= dt;
+            if (RoutePage.scrollResetTimer <= 0)
+                RoutePage.scrollPos = math.max(0, fp.current - 1);
+        }
+        else {
+            RoutePage.scrollResetTimer = 10;
+        }
         me.redraw();
     },
 
@@ -60,12 +69,19 @@ var RoutePage = {
         var to = deviceProps.wp[1].ident.getValue() or '';
 
         var lines = ['', 'NO ACTIVE ROUTE', ''];
+        var legStr = '_____' ~ sc.arrowR ~ '_____';
 
-        lines[0] = sprintf('%-5s' ~ sc.arrowR ~ '%-5s leg dtk',
-            navid5(from),
-            navid5(to));
+        if (from != '')
+            legStr = sprintf('%-5s' ~ sc.arrowR ~ '%-5s',
+                navid5(from),
+                navid5(to));
+        elsif (to != '')
+            legStr = sprintf('go to:%-5s',
+                navid5(to));
 
-        if (fp != nil) {
+        lines[0] = sprintf('%-11s leg dtk', legStr);
+
+        if (fp != nil and fp.getPlanSize() > 1) {
             for (var y = 0; y < 2; y += 1) {
                 var wp = fp.getWP(RoutePage.scrollPos + y);
                 var current = RoutePage.scrollPos + y == fp.current;
@@ -93,7 +109,7 @@ var RoutePage = {
                 var bearingStr = '___°';
                 var identStr = '';
 
-                if (y == 1 and me.selectedField >= 0 and me.selectedField < 5) {
+                if (y == 1 and me.editingWaypoint()) {
                     identStr = me.editableWaypointID;
                 }
                 elsif (wp != nil) {
@@ -118,16 +134,21 @@ var RoutePage = {
                 }
             }
         }
+        else {
+            if (me.editingWaypoint()) {
+                lines[2] = sprintf('   %-5s _____ ___°', me.editableWaypointID);
+            }
+        }
 
         putScreen(lines);
     },
 
     handleInput: func (what, amount) {
+        var fp = flightplan();
         if (call(BasePage.handleInput, [what, amount], me)) {
             return 1;
         }
         elsif (what == 'data-inner') {
-            var fp = flightplan();
             if (fp == nil) {
                 RoutePage.scrollPos = 0;
             }
@@ -141,10 +162,10 @@ var RoutePage = {
             if (fp != nil and idx < fp.getPlanSize()) {
                 me.editableWaypointID = fp.getWP(idx).id;
             }
+            RoutePage.scrollResetTimer = 10;
             me.redraw();
         }
         elsif (what == 'ENT' and me.deletingWaypoint) {
-            var fp = flightplan();
             fp.deleteWP(RoutePage.scrollPos + 1);
             me.deletingWaypoint = 0;
             me.selectedField = -1;
@@ -154,9 +175,11 @@ var RoutePage = {
         elsif (what == 'ENT' and me.editingWaypoint()) {
             var self = me;
             searchAndConfirmWaypoint(me.editableWaypointID, self, func (waypoint) {
-                var fp = flightplan();
                 var leg = createWP(waypoint.lat, waypoint.lon, waypoint.ident);
-                if (RoutePage.scrollPos >= fp.getPlanSize())
+                if (fp.getPlanSize() == 1 and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
+                    fp.destination = findAirportsByICAO(waypoint.id)[0];
+                }
+                elsif (RoutePage.scrollPos >= fp.getPlanSize())
                     fp.appendWP(leg);
                 else
                     fp.insertWPAfter(leg, RoutePage.scrollPos);
@@ -167,7 +190,7 @@ var RoutePage = {
             me.deletingWaypoint = 0;
             me.redraw();
         }
-        elsif (what == 'CLR' and me.editingWaypoint()) {
+        elsif (what == 'CLR' and me.editingWaypoint() and me.scrollPos + 1 < fp.getPlanSize()) {
             me.deletingWaypoint = 1;
             me.redraw();
         }
