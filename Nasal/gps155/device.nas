@@ -342,6 +342,7 @@ var initDevice = func {
     deviceProps['currentPage'] = {
         nav: props.globals.getNode('instrumentation/gps155/currentPage/nav', 1),
         set: props.globals.getNode('instrumentation/gps155/currentPage/set', 1),
+        rte: props.globals.getNode('instrumentation/gps155/currentPage/rte', 1),
     };
     setPropDefault(deviceProps.currentPage.nav, 0);
     setPropDefault(deviceProps.currentPage.set, 0);
