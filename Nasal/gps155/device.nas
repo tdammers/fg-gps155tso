@@ -105,7 +105,10 @@ var fixTypesToWaypointTypes = {
 
 var getWaypointType = func (waypoint, guess=0) {
     var ty = '';
-    if (ghosttype(waypoint) == 'airport')
+    if (ghosttype(waypoint) == 'flightplan-leg') {
+        ty = 'wpt';
+    }
+    elsif (ghosttype(waypoint) == 'airport')
         ty = 'airport';
     else
         ty = string.lc(waypoint.type);

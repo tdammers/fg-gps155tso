@@ -170,13 +170,19 @@ var formatLon = func (lat) {
 formatWaypointInfo = func (waypoint, indexStr = '', promptStr = '') {
     var extraInfo0 = '';
     var extraInfo1 = '';
-    var extraInfo2 = waypoint.name;
+    var extraInfo2 = '';
 
     var line0 = '';
     var line1 = '';
     var line2 = '';
 
     var type = '';
+    if (ghosttype(waypoint) == 'flightplan-leg') {
+        extraInfo2 = waypoint.wp_name;
+    }
+    else {
+        extraInfo2 = waypoint.name;
+    }
     if (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport') {
         var apinfo = airportinfo(waypoint.id);
         extraInfo0 = formatAltitude(waypoint.elevation);
@@ -236,6 +242,9 @@ formatWaypointInfo = func (waypoint, indexStr = '', promptStr = '') {
                 }
             }
         }
+    }
+    elsif (ghosttype(waypoint) == 'flightplan-leg') {
+        extraInfo0 = '';
     }
     elsif (waypoint.type == 'VOR') {
         extraInfo0 = format25khz(waypoint.frequency / 100);

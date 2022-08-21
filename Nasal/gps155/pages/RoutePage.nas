@@ -178,6 +178,32 @@ var RoutePage = {
             RoutePage.scrollResetTimer = 10;
             me.redraw();
         }
+        elsif (what == 'DCT') {
+            (func (returnPage) {
+                var wp = fp.getWP(RoutePage.scrollPos + 1);
+                if (wp != nil) {
+                    debug.dump(wp);
+                    loadPage(
+                        WaypointConfirmPage.new(
+                            wp,
+                            # confirm
+                            func {
+                                fp.current = RoutePage.scrollPos + 1;
+                                NavPage.currentSubpage = 0;
+                                loadPage(NavPage.new());
+                            },
+                            # reject
+                            func {
+                                loadPage(returnPage);
+                            }
+                        ));
+                }
+                else {
+                    # If no "current" waypoint is defined, fire up a waypoint
+                    # selector menu (TODO).
+                }
+            })(currentPage);
+        }
         elsif (what == 'ENT' and me.deletingWaypoint) {
             fp.deleteWP(RoutePage.scrollPos + 1);
             me.deletingWaypoint = 0;
