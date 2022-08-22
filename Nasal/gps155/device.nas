@@ -192,7 +192,9 @@ var updateReference = func {
 var setDTO = func (waypoint) {
     var db = getWaypointDistanceAndBearing(waypoint);
     var type = '';
-    if (ghosttype(waypoint) == 'airport')
+    if (ghosttype(waypoint) == 'flightplan-leg')
+        type = 'wpt';
+    elsif (ghosttype(waypoint) == 'airport')
         type = 'airport';
     else
         type = waypoint.type;
