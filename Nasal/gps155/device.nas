@@ -86,6 +86,39 @@ var update = func (dt) {
     updateCursorBlink();
     updateReference();
     updateReceiver(dt);
+    updateSequencing();
+};
+
+var updateSequencing = func {
+    var fp = flightplan();
+    if (fp == nil) return;
+    var leg = fp.getWP(fp.current);
+    var nextLeg = fp.getWP(fp.current + 1);
+    if (leg == nil) return;
+    var acpos = geo.aircraft_position();
+    var (crs, dist) = leg.courseAndDistanceFrom(acpos);
+    var gs = deviceProps.groundspeed.getValue();
+    var track = deviceProps.groundspeed.getValue();
+    var alt = deviceProps.altitude.getValue();
+    if (leg.wp_type == 'hdgToAlt') {
+        if (alt >= leg.alt_cstr) {
+            fp.current += 1;
+        }
+    }
+    elsif (leg.fly_type == 'flyOver' or nextLeg == nil) {
+        if (dist < 0.25) {
+            fp.current += 1;
+        }
+    }
+    else {
+        var courseDiff = math.min(90, math.abs(geo.normdeg180(nextLeg.leg_bearing - track)));
+        var r = gs / 60 / math.pi;
+        var thresholdDist = math.sin(courseDiff * D2R * 0.5) * r + 0.25;
+        # debug.dump(leg.wp_name, gs, courseDiff, r, dist, thresholdDist);
+        if (dist <= thresholdDist) {
+            fp.current += 1;
+        }
+    }
 };
 
 var waypointTypesToFixTypes = {
@@ -350,6 +383,10 @@ var initDevice = func {
     setPropDefault(deviceProps.currentPage.nav, 0);
     setPropDefault(deviceProps.currentPage.set, 0);
 
+    deviceProps['groundspeed'] = props.globals.getNode('instrumentation/gps/indicated-ground-speed-kt');
+    deviceProps['track'] = props.globals.getNode('instrumentation/gps/indicated-track-true-deg');
+    deviceProps['altitude'] = props.globals.getNode('instrumentation/gps/indicated-altitude-ft');
+
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');
     deviceProps['mode'] = props.globals.getNode('instrumentation/gps/mode');
@@ -369,6 +406,9 @@ var initDevice = func {
             name: props.globals.getNode('instrumentation/gps/wp/wp[1]/name'),
         },
     ];
+
+    deviceProps['delegateSequencing'] = props.globals.getNode('instrumentation/gps/config/delegate-sequencing');
+    deviceProps['delegateSequencing'].setBoolValue(1);
 
     setlistener(deviceProps['referenceMode'], updateReference);
 

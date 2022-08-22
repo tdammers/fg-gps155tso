@@ -188,7 +188,7 @@ var RoutePage = {
                             wp,
                             # confirm
                             func {
-                                fp.current = RoutePage.scrollPos + 1;
+                                setDTO(wp);
                                 NavPage.currentSubpage = 0;
                                 loadPage(NavPage.new());
                             },

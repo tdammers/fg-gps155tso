@@ -40,7 +40,6 @@ With that said, the installation method goes something like this:
 3. If you want the GPS155TSO to persist settings between FG sessions, add the
    following to your `aircraft-set.xml` (merge with existing `<sim>` and
    `<aircraft-data>` elements, if any):
-   element:
    ```xml
    <sim>
       <aircraft-data>
@@ -48,7 +47,18 @@ With that said, the installation method goes something like this:
       </aircraft-data>
    </sim>
    ```
-4. Add the 3D model to your cockpit. This can be achieved by adding something
+4. Add the following to your `aircraft-set.xml` (again, merge with existing
+   `<autopilot>` and `<route-manager>` elements, if any):
+   ```xml
+   <autopilot>
+     <route-manager>
+         <disable-fms type="bool">1</disable-fms>
+     </route-manager>
+   </autopilot>
+   ```
+   This is necessary to prevent the Route Manager from performing the built-in
+   automatic sequencing, which the GPS155TSO will override.
+5. Add the 3D model to your cockpit. This can be achieved by adding something
    like the following to your cockpit model XML:
    ```xml
     <model>
@@ -66,7 +76,7 @@ With that said, the installation method goes something like this:
    `/controls/lighting/panel-norm` property; this should of course become a
    property alias, and aircraft authors can select whichever property suits
    them to drive the backlight.
-4. Adapt your aircraft so that the GPS can drive the autopilot and HSI. The
+6. Adapt your aircraft so that the GPS can drive the autopilot and HSI. The
    easiest way to do that is to use the "slaving" feature of the built-in GPS,
    which effectively sends quasi-VOR signals to the HSI and autopilot,
    synthesized from the GPS. However, you can also use a 3-way switch (NAV1,
