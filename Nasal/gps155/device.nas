@@ -192,18 +192,25 @@ var updateReference = func {
 var setDTO = func (waypoint) {
     var db = getWaypointDistanceAndBearing(waypoint);
     var type = '';
-    if (ghosttype(waypoint) == 'flightplan-leg')
+    var name = '';
+    if (ghosttype(waypoint) == 'flightplan-leg') {
         type = 'wpt';
-    elsif (ghosttype(waypoint) == 'airport')
+        name = waypoint.wp_name;
+    }
+    elsif (ghosttype(waypoint) == 'airport') {
         type = 'airport';
-    else
+        name = waypoint.name;
+    }
+    else {
         type = waypoint.type;
+        name = waypoint.name;
+    }
     deviceProps.scratch.setValues({
         'altitude-ft': -9999,
         'distance-nm': db.distance,
         'has-next': 0,
         'ident': waypoint.id,
-        'name': waypoint.name,
+        'name': name,
         'latitude-deg': waypoint.lat,
         'longitude-deg': waypoint.lon,
         'mag-bearing-deg': db.bearing, # TODO: apply mag var
@@ -308,11 +315,122 @@ var updateReceiver = func (dt) {
     }
 };
 
+var FPDelegate = {
+    new: func (fp) {
+        logprint(LOG_INFO, 'creating GPS155TSO flightplan delegate');
+        # make FlightPlan behaviour match GPS config state
+        fp.followLegTrackToFix = getprop('/instrumentation/gps/config/follow-leg-track-to-fix') or 0;
+
+        # similarly, make FlightPlan follow the performance category settings
+        fp.aircraftCategory = getprop('/autopilot/settings/icao-aircraft-category') or 'A';
+        return {
+            parents: [FPDelegate],
+            flightplan: fp,
+        };
+    },
+
+    _captureCurrentCourse: func
+    {
+        var crs = deviceProps.desiredCourse.getValue();
+        deviceProps.selectedCourse.setValue(crs);
+    },
+
+    _selectOBSMode: func { deviceProps.command.setValue('obs'); },
+    _selectLEGMode: func { deviceProps.command.setValue('leg'); },
+
+    _exitLEGMode: func (reason='other reason') {
+        if (deviceProps.command.getValue() == 'leg') {
+            logprint(LOG_INFO, 'switch GPS to OBS mode due to ' ~ reason);
+            me._captureCurrentCourse();
+            me._selectOBSMode();
+        }
+    },
+
+    waypointsChanged: func
+    {
+    },
+
+    activated: func
+    {
+        if (!me.flightplan.active)
+            return;
+
+        logprint(LOG_INFO,'flightplan activated, default GPS to LEG mode');
+        me._selectLEGMode();
+
+        # if (getprop(GPSPath ~ '/wp/wp[1]/from-flag')) {
+        #     logprint(LOG_INFO, '\tat GPS activation, already passed active WP, sequencing');
+        #     me.sequence();
+        # }
+    },
+
+    deactivated: func
+    {
+        me._exitLEGMode('flightplan deactivated');
+    },
+
+    endOfFlightPlan: func
+    {
+        me._exitLEGMode('end of flightplan');
+    },
+
+    cleared: func
+    {
+        if (!me.flightplan.active)
+            return;
+        me._exitLEGMode('flightplan cleared');
+    },
+
+    sequence: func
+    {
+        if (!me.flightplan.active)
+            return;
+
+        var mode = deviceProps.command.getValue();
+        if (mode == 'dto') {
+            # direct-to is done, check if we should resume the following leg
+            var index = me.flightplan.indexOfWP(deviceProps.wp[1].latitude,
+                                                deviceProps.wp[1].longitude);
+            if (index >= 0) {
+                logprint(LOG_INFO, "default GPS reached Direct-To, resuming FP leg at " ~ index);
+                me.flightplan.current = index + 1;
+                me._selectLEGMode();
+            } else {
+                # revert to OBS mode
+                logprint(LOG_INFO, "default GPS reached Direct-To, resuming to OBS");
+
+                me._captureCurrentCourse();
+                me._selectOBSMode();
+            }
+        }
+        elsif (mode == 'leg') {
+            # standard leg sequencing
+            var nextIndex = me.flightplan.current + 1;
+            if (nextIndex >= me.flightplan.numWaypoints()) {
+                logprint(LOG_INFO, "default GPS sequencing, finishing flightplan");
+                me.flightplan.finish();
+            } elsif (me.flightplan.nextWP().wp_type == 'discontinuity') {
+                me._exitLEGMode('DISCONTINUITY');
+            } else {
+                logprint(LOG_INFO, "default GPS sequencing to next WP");
+                me.flightplan.current = nextIndex;
+            }
+        }
+        else {
+            # OBS, do nothing
+        }
+    },
+
+    currentWaypointChanged: func { },
+};
+
 var initDevice = func {
     # Clean up for reloading purposes
     if (updateTimer != nil) {
         updateTimer.stop();
     }
+    unregisterFlightPlanDelegate('GPS155TSO');
+    registerFlightPlanDelegate(FPDelegate.new, 'GPS155TSO');
 
     updateTimer = maketimer(0.5, func { update(0.5); });
     updateTimer.simulatedTime = 1;
@@ -392,6 +510,8 @@ var initDevice = func {
     deviceProps['scratch'] = props.globals.getNode('instrumentation/gps/scratch');
     deviceProps['command'] = props.globals.getNode('instrumentation/gps/command');
     deviceProps['mode'] = props.globals.getNode('instrumentation/gps/mode');
+    deviceProps['selectedCourse'] = props.globals.getNode('instrumentation/gps/selected-course-deg');
+    deviceProps['desiredCourse'] = props.globals.getNode('instrumentation/gps/desired-course-deg');
     deviceProps['wp'] = [
         {
             ident: props.globals.getNode('instrumentation/gps/wp/wp[0]/ID'),
