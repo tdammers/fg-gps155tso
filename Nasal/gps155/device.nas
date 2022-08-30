@@ -91,23 +91,48 @@ var update = func (dt) {
 
 var updateSequencing = func {
     var fp = flightplan();
+
     if (fp == nil) return;
-    var leg = fp.getWP(fp.current);
-    var nextLeg = fp.getWP(fp.current + 1);
+
+
+    var mode = deviceProps.mode.getValue();
+    var leg = nil;
+    var nextLeg = nil;
+    var legModeNext = 0;
+
+    if (mode == 'obs') {
+        # Nothing to do
+        return;
+    }
+    elsif (mode == 'dto') {
+        # direct-to is done, check if we should resume the following leg
+        var index = fp.indexOfWP(deviceProps.wp[1].latitude,
+                                 deviceProps.wp[1].longitude);
+        
+        if (index >= 0) {
+            fp.current = index - 1;
+            legModeNext = 1;
+        }
+    }
+
+    leg = fp.getWP(fp.current);
+    nextLeg = fp.getWP(fp.current + 1);
+
     if (leg == nil) return;
     var acpos = geo.aircraft_position();
     var (crs, dist) = leg.courseAndDistanceFrom(acpos);
     var gs = deviceProps.groundspeed.getValue();
     var track = deviceProps.groundspeed.getValue();
     var alt = deviceProps.altitude.getValue();
+    var advance = 0;
     if (leg.wp_type == 'hdgToAlt') {
         if (alt >= leg.alt_cstr) {
-            fp.current += 1;
+            advance = 1;
         }
     }
     elsif (leg.fly_type == 'flyOver' or nextLeg == nil) {
         if (dist < 0.25) {
-            fp.current += 1;
+            advance = 1;
         }
     }
     else {
@@ -116,6 +141,22 @@ var updateSequencing = func {
         var thresholdDist = math.sin(courseDiff * D2R * 0.5) * r + 0.25;
         # debug.dump(leg.wp_name, gs, courseDiff, r, dist, thresholdDist);
         if (dist <= thresholdDist) {
+            advance = 1;
+        }
+    }
+    if (advance) {
+        if (mode == 'dto') {
+            if (legModeNext) {
+                fp.current += 1;
+                deviceProps.command.setValue('leg');
+            }
+            else {
+                var crs = deviceProps.desiredCourse.getValue();
+                deviceProps.selectedCourse.setValue(crs);
+                deviceProps.command.setValue('obs');
+            }
+        }
+        else {
             fp.current += 1;
         }
     }
@@ -315,6 +356,22 @@ var updateReceiver = func (dt) {
     }
 };
 
+var captureCurrentCourse = func {
+    var crs = deviceProps.desiredCourse.getValue();
+    deviceProps.selectedCourse.setValue(crs);
+};
+
+var selectOBSMode = func { deviceProps.command.setValue('obs'); };
+var selectLEGMode = func { deviceProps.command.setValue('leg'); };
+
+var exitLEGMode = func (reason='other reason') {
+    if (deviceProps.command.getValue() == 'leg') {
+        logprint(LOG_INFO, 'switch GPS to OBS mode due to ' ~ reason);
+        me._captureCurrentCourse();
+        me._selectOBSMode();
+    }
+};
+
 var FPDelegate = {
     new: func (fp) {
         logprint(LOG_INFO, 'creating GPS155TSO flightplan delegate');
@@ -329,22 +386,6 @@ var FPDelegate = {
         };
     },
 
-    _captureCurrentCourse: func
-    {
-        var crs = deviceProps.desiredCourse.getValue();
-        deviceProps.selectedCourse.setValue(crs);
-    },
-
-    _selectOBSMode: func { deviceProps.command.setValue('obs'); },
-    _selectLEGMode: func { deviceProps.command.setValue('leg'); },
-
-    _exitLEGMode: func (reason='other reason') {
-        if (deviceProps.command.getValue() == 'leg') {
-            logprint(LOG_INFO, 'switch GPS to OBS mode due to ' ~ reason);
-            me._captureCurrentCourse();
-            me._selectOBSMode();
-        }
-    },
 
     waypointsChanged: func
     {
@@ -356,7 +397,7 @@ var FPDelegate = {
             return;
 
         logprint(LOG_INFO,'flightplan activated, default GPS to LEG mode');
-        me._selectLEGMode();
+        selectLEGMode();
 
         # if (getprop(GPSPath ~ '/wp/wp[1]/from-flag')) {
         #     logprint(LOG_INFO, '\tat GPS activation, already passed active WP, sequencing');
@@ -366,19 +407,19 @@ var FPDelegate = {
 
     deactivated: func
     {
-        me._exitLEGMode('flightplan deactivated');
+        exitLEGMode('flightplan deactivated');
     },
 
     endOfFlightPlan: func
     {
-        me._exitLEGMode('end of flightplan');
+        exitLEGMode('end of flightplan');
     },
 
     cleared: func
     {
         if (!me.flightplan.active)
             return;
-        me._exitLEGMode('flightplan cleared');
+        exitLEGMode('flightplan cleared');
     },
 
     sequence: func
@@ -394,13 +435,13 @@ var FPDelegate = {
             if (index >= 0) {
                 logprint(LOG_INFO, "default GPS reached Direct-To, resuming FP leg at " ~ index);
                 me.flightplan.current = index + 1;
-                me._selectLEGMode();
+                selectLEGMode();
             } else {
                 # revert to OBS mode
                 logprint(LOG_INFO, "default GPS reached Direct-To, resuming to OBS");
 
-                me._captureCurrentCourse();
-                me._selectOBSMode();
+                captureCurrentCourse();
+                selectOBSMode();
             }
         }
         elsif (mode == 'leg') {
@@ -410,7 +451,7 @@ var FPDelegate = {
                 logprint(LOG_INFO, "default GPS sequencing, finishing flightplan");
                 me.flightplan.finish();
             } elsif (me.flightplan.nextWP().wp_type == 'discontinuity') {
-                me._exitLEGMode('DISCONTINUITY');
+                exitLEGMode('DISCONTINUITY');
             } else {
                 logprint(LOG_INFO, "default GPS sequencing to next WP");
                 me.flightplan.current = nextIndex;
@@ -531,6 +572,16 @@ var initDevice = func {
 
     deviceProps['delegateSequencing'] = props.globals.getNode('instrumentation/gps/config/delegate-sequencing');
     deviceProps['delegateSequencing'].setBoolValue(1);
+
+    deviceProps['flightplanActive'] = props.globals.getNode('autopilot/route-manager/active');
+    setlistener(deviceProps['flightplanActive'], func (node) {
+        if (node.getBoolValue()) {
+            selectLEGMode();
+        }
+        else {
+            exitLEGMode('Flightplan deactivated');
+        }
+    });
 
     setlistener(deviceProps['referenceMode'], updateReference);
 

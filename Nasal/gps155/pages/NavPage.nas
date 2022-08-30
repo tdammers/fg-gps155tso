@@ -226,7 +226,12 @@ var NavPage = {
                     return 'dtk ' ~ formatHeading(legTRK);
             }
             elsif (type == 'ete') {
-                return 'ete' ~ substr(ete or '__:__', 0, 5);
+                if (substr(ete or '__:__', 0, 3) == '00:')
+                    return 'ete' ~ substr(ete or '__:__', 3, 5);
+                elsif (substr(ete or '__:__', 0, 1) == '0:')
+                    return 'ete' ~ substr(ete or '__:__', 1, 4);
+                else
+                    return 'ete' ~ substr(ete or '__:__', 0, 5);
             }
             else {
                 # TODO: dis, cts, trn, vn

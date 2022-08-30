@@ -178,6 +178,24 @@ var RoutePage = {
             RoutePage.scrollResetTimer = 10;
             me.redraw();
         }
+        elsif (what == 'CLR') {
+            (func (returnPage) {
+                loadPage(
+                    ConfirmPage.new(
+                        "CLEAR ROUTE",
+                        # confirm
+                        func {
+                            fp.cleanPlan();
+                            RoutePage.scrollPos = 0;
+                            loadPage(NavPage.new());
+                        },
+                        # reject
+                        func {
+                            loadPage(returnPage);
+                        }
+                    ));
+                })(currentPage);
+        }
         elsif (what == 'DCT') {
             (func (returnPage) {
                 var wp = fp.getWP(RoutePage.scrollPos + 1);
