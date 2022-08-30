@@ -5,11 +5,13 @@ var SettingsPage = {
         return m;
     },
 
-    SUBPAGE_SAT_STATUS: 0,
-    SUBPAGE_NAV_UNITS: 1,
-    SUBPAGE_NUM: 2,
-
-    getNumPages: func { return 2; },
+    getNumSubpages: func { return 2; },
+    getSubpage: func (i) {
+        if (i == 0)
+            return me.SatSubpage.new();
+        else
+            return me.NavUnitsSubpage.new();
+    },
 
     start: func {
         call(MultiPage.start, [], me);
@@ -21,9 +23,23 @@ var SettingsPage = {
         modeLightProp.setValue('');
     },
 
-    setSelectableFields: func {
-        var self = me;
-        if (me.getCurrentPage() == SettingsPage.SUBPAGE_NAV_UNITS) {
+    SatSubpage: {
+        new: func { return { parents: [SettingsPage.SatSubpage, BasePage], } },
+        redraw: func {
+            var status = deviceProps.receiver.status.getValue() or 0;
+            putScreen(formatSatStatus(status, satellites));
+        },
+        update: func (dt) {
+            me.redraw();
+        },
+    },
+
+    NavUnitsSubpage: {
+        new: func { return { parents: [SettingsPage.NavUnitsSubpage, BasePage], } },
+
+        start: func {
+            call(BasePage.start, [], me);
+            var self = me;
             me.selectableFields = [
                 { row: 0, col: 5,
                   changeValue: func(amount) {
@@ -90,53 +106,24 @@ var SettingsPage = {
                   }
                 },
             ];
-        }
-        else {
-            me.selectableFields = [];
-        }
-    },
+        },
 
-    redraw: func {
-        if (me.getCurrentPage() == SettingsPage.SUBPAGE_NAV_UNITS) {
-            me.redrawNavUnits();
-        }
-        elsif (me.getCurrentPage() == SettingsPage.SUBPAGE_SAT_STATUS) {
-            me.redrawSatStatus();
-        }
-        else {
-            clearScreen();
-        }
-    },
-
-    redrawSatStatus: func {
-        var status = deviceProps.receiver.status.getValue() or 0;
-        putScreen(formatSatStatus(status, satellites));
-    },
-
-    redrawNavUnits: func {
-        putLine(0,
-            sprintf('posn %-3s alt %1s %3s',
-                unitSymbol(deviceProps.settings.units.position.getValue()),
-                unitSymbol(deviceProps.settings.units.altitude.getValue()),
-                unitSymbol(deviceProps.settings.units.vspeed.getValue())));
-        putLine(1,
-            sprintf('nav  %1s %1s fuel %1s',
-                unitSymbol(deviceProps.settings.units.distance.getValue()),
-                unitSymbol(deviceProps.settings.units.speed.getValue()),
-                unitSymbol(deviceProps.settings.units.fuel.getValue())));
-        putLine(2,
-            sprintf('pres %1s   temp %1s',
-                unitSymbol(deviceProps.settings.units.pressure.getValue()),
-                unitSymbol(deviceProps.settings.units.temperature.getValue())));
-    },
-
-    handleInput: func (what, amount) {
-        if (call(MultiPage.handleInput, [what, amount], me)) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
+        redraw: func {
+            putLine(0,
+                sprintf('posn %-3s alt %1s %3s',
+                    unitSymbol(deviceProps.settings.units.position.getValue()),
+                    unitSymbol(deviceProps.settings.units.altitude.getValue()),
+                    unitSymbol(deviceProps.settings.units.vspeed.getValue())));
+            putLine(1,
+                sprintf('nav  %1s %1s fuel %1s',
+                    unitSymbol(deviceProps.settings.units.distance.getValue()),
+                    unitSymbol(deviceProps.settings.units.speed.getValue()),
+                    unitSymbol(deviceProps.settings.units.fuel.getValue())));
+            putLine(2,
+                sprintf('pres %1s   temp %1s',
+                    unitSymbol(deviceProps.settings.units.pressure.getValue()),
+                    unitSymbol(deviceProps.settings.units.temperature.getValue())));
+        },
     },
 };
 

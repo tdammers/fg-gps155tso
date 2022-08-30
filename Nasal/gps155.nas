@@ -9,7 +9,9 @@ var include = func (basename) {
 
 var listeners = [];
 var setlistener = func (node, code, init=0, type=1) {
-    append(listeners, globals.setlistener(node, code, init, type));
+    var l = globals.setlistener(node, code, init, type);
+    append(listeners, l);
+    return l;
 };
 
 var removelistener = func (l) {

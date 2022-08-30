@@ -24,7 +24,8 @@ var InitializationPage = {
 
     update: func (dt) {
         if (deviceProps.receiver.acquiringTimeLeft.getValue() <= 0.0) {
-            loadPage(NavPage.new());
+            # loadPage(NavPage.new());
+            loadPage(SettingsPage.new());
         }
         me.redraw();
     },

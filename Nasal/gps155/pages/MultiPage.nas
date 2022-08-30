@@ -3,59 +3,72 @@ var MultiPage = {
         return {
             parents: [MultiPage, BasePage],
             currentPageProp: currentPageProp,
+            currentSubpage: nil,
             modeKey: modeKey,
             wrapLeft: wrapLeft,
+            pagePropListener: nil,
         };
     },
 
     start: func {
+        var self = me;
         call(BasePage.start, [], me);
-        me.setSelectableFields();
-        me.handleSubpageChange();
-        me.redraw();
+        me.pagePropListener = setlistener(me.currentPageProp, func (node) {
+            var pageIndex = node.getValue();
+            if (me.currentSubpage != nil) {
+                me.currentSubpage.stop();
+            }
+            me.currentSubpage = me.getSubpage(pageIndex);
+            if (me.currentSubpage != nil) {
+                me.currentSubpage.start();
+                me.currentSubpage.redraw();
+            }
+        }, 1, 0);
     },
 
-    stop: func {},
-
-    getCurrentPage: func {
-        me.currentPageProp.getValue() or 0;
+    stop: func {
+        call(BasePage.stop, [], me);
+        if (me.currentSubpage != nil) {
+            me.currentSubpage.stop();
+        }
+        if (me.pagePropListener != nil) {
+            removelistener(me.pagePropListener);
+        }
+        me.pagePropListener = nil;
     },
 
-    getNumPages: func {
-        return 1; # Override as needed
+    getSubpage: func (i) {
+        return nil;
     },
 
-    setSelectableFields: func {
-        me.selectableFields = [];
+    getNumSubpages: func {
+        return 0; # Override as needed
     },
 
-    handleSubpageChange: func {
-        # Override as needed
+    update: func (dt) {
+        if (me.currentSubpage != nil)
+            me.currentSubpage.update(dt);
     },
 
     moveSubpage: func (amount=1) {
-        var currentSubpage = me.currentPageProp.getValue() or 0;
+        var subpageIndex = me.currentPageProp.getValue() or 0;
         if (amount == 0) {
             return;
         }
         elsif (amount > 0) {
             me.currentPageProp.setValue(
-                math.mod(currentSubpage + amount, me.getNumPages()));
+                math.mod(subpageIndex + amount, me.getNumSubpages()));
         }
         elsif (amount < 0) {
             if (me.wrapLeft) {
                 me.currentPageProp.setValue(
-                    math.mod(currentSubpage + me.getNumPages() + amount, me.getNumPages()));
+                    math.mod(subpageIndex + me.getNumSubpages() + amount, me.getNumSubpages()));
             }
             else {
                 me.currentPageProp.setValue(
-                    math.max(0, currentSubpage + amount));
+                    math.max(0, subpageIndex + amount));
             }
         }
-        me.handleSubpageChange();
-        me.setSelectableFields();
-        unsetCursor();
-        me.redraw();
     },
 
     handleInput: func (what, amount=0) {
@@ -63,8 +76,11 @@ var MultiPage = {
         if (call(BasePage.handleInput, [what, amount], me)) {
             return 1;
         }
-        if (what == me.modeKey) {
+        elsif (what == me.modeKey) {
             me.moveSubpage(1);
+            return 1;
+        }
+        elsif (me.currentSubpage != nil and me.currentSubpage.handleInput(what, amount)) {
             return 1;
         }
         elsif (what == 'data-outer') {

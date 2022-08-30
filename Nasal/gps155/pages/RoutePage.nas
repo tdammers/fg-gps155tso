@@ -2,35 +2,55 @@ var RoutePage = {
     new: func () {
         var m = MultiPage.new(deviceProps.currentPage.rte, 'RTE', 0);
         m.parents = [RoutePage] ~ m.parents;
-        m.editableWaypointID = '';
-        m.deletingWaypoint = 0;
         return m;
     },
 
     SUBPAGE_ACTIVE_ROUTE: 0,
 
-    getNumPages: func { return 1; },
+    getNumSubpages: func { return 1; },
+    getSubpage: func (i) {
+        if (i == RoutePage.SUBPAGE_ACTIVE_ROUTE) {
+            return ActiveRoutePage.new();
+        }
+        else {
+            return nil;
+        }
+    },
+
+    start: func {
+        call(MultiPage.start, [], me);
+        modeLightProp.setValue('RTE');
+    },
+
+    stop: func {
+        call(MultiPage.stop, [], me);
+        modeLightProp.setValue('');
+    },
+};
+
+var ActiveRoutePage = {
+    new: func () {
+        return {
+            parents: [ActiveRoutePage, BasePage],
+            editableWaypointID: '',
+            deletingWaypoint: 0,
+        };
+    },
 
     scrollResetTimer: 0,
     scrollPos: 0,
 
     start: func {
-        call(MultiPage.start, [], me);
-        modeLightProp.setValue('RTE');
+        call(BasePage.start, [], me);
         var fp = flightplan();
         if (fp != nil) {
-            var idx = RoutePage.scrollPos + 1;
+            var idx = ActiveRoutePage.scrollPos + 1;
             if (idx < fp.getPlanSize()) {
                 me.editableWaypointID = fp.getWP(idx).id;
             }
         }
         me.setSelectableFields();
         me.redraw();
-    },
-
-    stop: func {
-        call(MultiPage.stop, [], me);
-        modeLightProp.setValue('');
     },
 
     editingWaypoint: func {
@@ -40,44 +60,34 @@ var RoutePage = {
     setSelectableFields: func {
         var self = me;
         me.selectableFields = [];
-        if (me.getCurrentPage() == RoutePage.SUBPAGE_ACTIVE_ROUTE) {
-            for (var i = 0; i < 5; i += 1) {
-                (func (i) {
-                    append(self.selectableFields, {
-                        row: 2,
-                        col: 3 + i,
-                        changeValue: func (amount) {
-                            self.editableWaypointID = scrollChar(self.editableWaypointID, i, amount);
-                            self.redraw();
-                        }
-                    });
-                })(i);
-            }
+        for (var i = 0; i < 5; i += 1) {
+            (func (i) {
+                append(self.selectableFields, {
+                    row: 2,
+                    col: 3 + i,
+                    changeValue: func (amount) {
+                        self.editableWaypointID = scrollChar(self.editableWaypointID, i, amount);
+                        self.redraw();
+                    }
+                });
+            })(i);
         }
     },
 
     update: func (dt) {
         var fp = flightplan();
-        if (me.getCurrentPage() == RoutePage.SUBPAGE_ACTIVE_ROUTE) {
-            if (me.selectedField < 0 and fp != nil) {
-                RoutePage.scrollResetTimer -= dt;
-                if (RoutePage.scrollResetTimer <= 0)
-                    RoutePage.scrollPos = math.max(0, fp.current - 1);
-            }
-            else {
-                RoutePage.scrollResetTimer = 10;
-            }
-            me.redraw();
+        if (me.selectedField < 0 and fp != nil) {
+            ActiveRoutePage.scrollResetTimer -= dt;
+            if (ActiveRoutePage.scrollResetTimer <= 0)
+                ActiveRoutePage.scrollPos = math.max(0, fp.current - 1);
         }
+        else {
+            ActiveRoutePage.scrollResetTimer = 10;
+        }
+        me.redraw();
     },
-
 
     redraw: func {
-        if (me.getCurrentPage() == RoutePage.SUBPAGE_ACTIVE_ROUTE)
-            me.redrawActiveRoute();
-    },
-
-    redrawActiveRoute: func {
         var fp = flightplan();
         var fromID = deviceProps.wp[0].ident.getValue() or '';
         var tgtID = deviceProps.wp[1].ident.getValue() or '';
@@ -158,24 +168,24 @@ var RoutePage = {
 
     handleInput: func (what, amount) {
         var fp = flightplan();
-        if (call(MultiPage.handleInput, [what, amount], me)) {
+        if (call(BasePage.handleInput, [what, amount], me)) {
             return 1;
         }
         elsif (what == 'data-inner') {
             if (fp == nil) {
-                RoutePage.scrollPos = 0;
+                ActiveRoutePage.scrollPos = 0;
             }
             else {
                 var maxPos = fp.getPlanSize() - 1;
-                RoutePage.scrollPos += amount;
-                if (RoutePage.scrollPos < 0) RoutePage.scrollPos = 0;
-                if (RoutePage.scrollPos > maxPos) RoutePage.scrollPos = maxPos;
+                ActiveRoutePage.scrollPos += amount;
+                if (ActiveRoutePage.scrollPos < 0) ActiveRoutePage.scrollPos = 0;
+                if (ActiveRoutePage.scrollPos > maxPos) ActiveRoutePage.scrollPos = maxPos;
             }
             var idx = RoutePage.scrollPos + 1;
             if (fp != nil and idx < fp.getPlanSize()) {
                 me.editableWaypointID = fp.getWP(idx).id;
             }
-            RoutePage.scrollResetTimer = 10;
+            ActiveRoutePage.scrollResetTimer = 10;
             me.redraw();
         }
         elsif (what == 'CLR') {
@@ -207,8 +217,7 @@ var RoutePage = {
                             # confirm
                             func {
                                 setDTO(wp);
-                                NavPage.currentSubpage = 0;
-                                loadPage(NavPage.new());
+                                loadPage(NavPage.new(NavPage.SUBPAGE_CDI));
                             },
                             # reject
                             func {
