@@ -85,6 +85,7 @@ var update = func (dt) {
     blinkProp.setValue(blinkState);
     updateCursorBlink();
     updateReference();
+    updateInitialization(dt);
     updateReceiver(dt);
     updateSequencing();
 };
@@ -192,6 +193,13 @@ var getWaypointType = func (waypoint, guess=0) {
         return substr(ty, 0, 3);
     else
         return '';
+};
+
+var updateInitialization = func (dt) {
+    var timeLeft = deviceProps.initializationTimer.getValue();
+    if (timeLeft > 0) {
+        deviceProps.initializationTimer.setValue(math.max(0, timeLeft - dt));
+    }
 };
 
 var updateReference = func {
@@ -495,6 +503,8 @@ var initDevice = func {
     deviceProps['referenceLon'].setValue(0);
     deviceProps['powered'] = props.globals.getNode('instrumentation/gps155/powered', 1);
     setPropDefault(deviceProps.powered, 0);
+    deviceProps['initializationTimer'] = props.globals.getNode('instrumentation/gps155/initializationTimer', 1);
+    setPropDefault(deviceProps.initializationTimer, 5);
     deviceProps['receiver'] = {
         status: props.globals.getNode('instrumentation/gps155/receiver/status', 1),
         statusText: props.globals.getNode('instrumentation/gps155/receiver/status-text', 1),
@@ -502,7 +512,7 @@ var initDevice = func {
     };
     setPropDefault(deviceProps.receiver.status, RECEIVER_STATUS_OFF);
     setPropDefault(deviceProps.receiver.statusText, 'Not usable');
-    setPropDefault(deviceProps.receiver.acquiringTimeLeft, 0);
+    setPropDefault(deviceProps.receiver.acquiringTimeLeft, 1);
 
     deviceProps['settings'] = {
         units: {
@@ -523,7 +533,8 @@ var initDevice = func {
                 trk: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/trk', 1),
                 ete: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/ete', 1),
             },
-        }
+        },
+        startupSpeed: props.globals.getNode('instrumentation/gps155/settings/startup-speed', 1),
     };
 
     setPropDefault(deviceProps.settings.units.position, 'dm');
@@ -535,6 +546,7 @@ var initDevice = func {
     setPropDefault(deviceProps.settings.units.fuel, 'lbs');
     setPropDefault(deviceProps.settings.units.pressure, 'hpa');
     setPropDefault(deviceProps.settings.units.temperature, 'degC');
+    setPropDefault(deviceProps.settings.startupSpeed, 'realistic');
 
     deviceProps['currentPage'] = {
         nav: props.globals.getNode('instrumentation/gps155/currentPage/nav', 1),
@@ -589,11 +601,23 @@ var initDevice = func {
     setlistener('controls/gps155/power', func (node) {
         if (node.getBoolValue()) {
             powered = 1;
-            loadPage(InitializationPage.new());
             updateTimer.start();
             deviceProps.receiver.status.setValue(RECEIVER_STATUS_ACQUIRING);
-            deviceProps.receiver.acquiringTimeLeft.setValue(5); # debug
-            # deviceProps.receiver.acquiringTimeLeft.setValue((rand() * 300) + 120);
+
+            var startupSpeed = deviceProps.settings.startupSpeed.getValue();
+            if (startupSpeed == 'instant') {
+                deviceProps.initializationTimer.setValue(0);
+                deviceProps.receiver.acquiringTimeLeft.setValue(0);
+            }
+            elsif (startupSpeed == 'fast') {
+                deviceProps.initializationTimer.setValue(3);
+                deviceProps.receiver.acquiringTimeLeft.setValue(6);
+            }
+            else {
+                deviceProps.initializationTimer.setValue(10);
+                deviceProps.receiver.acquiringTimeLeft.setValue((rand() * 300) + 120);
+            }
+            loadPage(InitializationPage.new());
         }
         else {
             powered = 0;
