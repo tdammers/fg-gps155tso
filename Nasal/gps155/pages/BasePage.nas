@@ -1,4 +1,8 @@
 var BasePage = {
+    new: func {
+        return { parents: [BasePage] };
+    },
+
     start: func {
         me.selectableFields = [];
         me.selectedField = -1;
@@ -7,6 +11,11 @@ var BasePage = {
         unsetCursor();
     },
     update: func (dt) {},
+
+    deselectField: func {
+        me.selectedField = -1;
+        unsetCursor();
+    },
 
     handleInput: func (what, amount=0) {
         if (what == 'CRSR') {

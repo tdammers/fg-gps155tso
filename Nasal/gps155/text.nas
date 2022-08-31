@@ -561,3 +561,35 @@ var scrollChar = func (str, index, amount) {
     str = utf8.substr(str, 0, index) ~ scrollAlphabet[charNum];
     return str;
 };
+
+var parseApproachID = func (approachID) {
+    var rem = approachID;
+    var consume = func (count) {
+        var result = substr(rem, 0, count);
+        rem = substr(rem, count);
+        return result;
+    };
+    var approachType = string.lc(consume(3));
+    var approachLetter = '';
+    if (!string.isdigit(rem[0])) {
+        approachLetter = consume(1);
+    }
+    var runway = rem;
+    return {
+        id: approachID,
+        type: approachType,
+        letter: approachLetter,
+        runway: runway,
+    };
+};
+
+var formatApproach = func (approach) {
+    if (isscalar(approach)) {
+        approach = parseApproachID(approach);
+    }
+    elsif (isghost(approach)) {
+        approach = parseApproachID(approach.id);
+    }
+    return sprintf('%3s %1s rw%-3s',
+        approach.type, approach.letter, approach.runway);
+};

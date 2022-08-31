@@ -1,16 +1,20 @@
 var RoutePage = {
     new: func () {
-        var m = MultiPage.new(deviceProps.currentPage.rte, 'RTE', 0);
+        var m = MultiPage.new(deviceProps.currentPage.rte, 'RTE');
         m.parents = [RoutePage] ~ m.parents;
         return m;
     },
 
     SUBPAGE_ACTIVE_ROUTE: 0,
+    SUBPAGE_APPROACH_SELECT: 1,
 
-    getNumSubpages: func { return 1; },
+    getNumSubpages: func { return 2; },
     getSubpage: func (i) {
         if (i == RoutePage.SUBPAGE_ACTIVE_ROUTE) {
             return ActiveRoutePage.new();
+        }
+        elsif (i == RoutePage.SUBPAGE_APPROACH_SELECT) {
+            return ApproachSelectPage.new();
         }
         else {
             return nil;
@@ -107,10 +111,12 @@ var ActiveRoutePage = {
 
         if (fp != nil and fp.getPlanSize() > 1) {
             for (var y = 0; y < 2; y += 1) {
-                var wp = fp.getWP(RoutePage.scrollPos + y);
-                var current = RoutePage.scrollPos + y == fp.current;
-                var first = RoutePage.scrollPos == 0;
-                var last = RoutePage.scrollPos >= fp.getPlanSize() - 1;
+                var index = ActiveRoutePage.scrollPos + y;
+                var wp = fp.getWP(index);
+                var wpPrev = (index > 0) ? fp.getWP(index - 1) : nil;
+                var current = index == fp.current;
+                var first = ActiveRoutePage.scrollPos == 0;
+                var last = ActiveRoutePage.scrollPos >= fp.getPlanSize() - 1;
                 var scrollSymbol = ' ';
                 if (!first) {
                     if (!last) {
@@ -132,6 +138,15 @@ var ActiveRoutePage = {
                 var distStr = '__.___';
                 var bearingStr = '___°';
                 var identStr = '';
+                var wpSymbol = '';
+
+                if (wpPrev != nil and wp != nil) {
+                    # Determine IAF
+                    # debug.dump(wp.wp_role, wpPrev.wp_role);
+                    if (wp.wp_role == 'approach' and wpPrev.wp_role != 'approach') {
+                        wpSymbol = sc['if'];
+                    }
+                }
 
                 if (y == 1 and me.editingWaypoint()) {
                     identStr = me.editableWaypointID;
@@ -143,13 +158,15 @@ var ActiveRoutePage = {
                 }
 
                 if (me.deletingWaypoint and y == 1) {
-                    lines[y+1] = sprintf('%1s %1s%_____           ',
+                    lines[y+1] = sprintf('%1s%1s%1s%_____           ',
                         (y == 0) ? ' ' : scrollSymbol,
+                        wpSymbol,
                         current ? sc.arrowR : ':');
                 }
                 else {
-                    lines[y+1] = sprintf('%1s %1s%-5s %5s %4s',
+                    lines[y+1] = sprintf('%1s%1s%1s%-5s %5s %4s',
                         (y == 0) ? ' ' : scrollSymbol,
+                        wpSymbol,
                         current ? sc.arrowR : ':',
                         identStr,
                         distStr,
@@ -176,12 +193,12 @@ var ActiveRoutePage = {
                 ActiveRoutePage.scrollPos = 0;
             }
             else {
-                var maxPos = fp.getPlanSize() - 1;
+                var maxPos = fp.getPlanSize() - 2;
                 ActiveRoutePage.scrollPos += amount;
                 if (ActiveRoutePage.scrollPos < 0) ActiveRoutePage.scrollPos = 0;
                 if (ActiveRoutePage.scrollPos > maxPos) ActiveRoutePage.scrollPos = maxPos;
             }
-            var idx = RoutePage.scrollPos + 1;
+            var idx = ActiveRoutePage.scrollPos + 1;
             if (fp != nil and idx < fp.getPlanSize()) {
                 me.editableWaypointID = fp.getWP(idx).id;
             }
@@ -210,7 +227,7 @@ var ActiveRoutePage = {
             (func (returnPage) {
                 var wp = fp.getWP(RoutePage.scrollPos + 1);
                 if (wp != nil) {
-                    debug.dump(wp);
+                    # debug.dump(wp);
                     loadPage(
                         WaypointConfirmPage.new(
                             wp,
@@ -268,3 +285,108 @@ var ActiveRoutePage = {
     },
 };
 
+var ApproachSelectPage = {
+    new: func {
+        var m = BasePage.new();
+        m.parents = [ApproachSelectPage] ~ m.parents;
+        m.selectedApproach = nil;
+        m.fp = nil;
+        m.available = 0;
+        m.scrollPos = 0;
+        m.approaches = [];
+        return m;
+    },
+
+    start: func {
+        var self = me;
+        call(BasePage.start, [], me);
+        me.fp = flightplan();
+        me.available = me.fp.active and me.fp.destination != nil;
+        me.approaches = (me.fp.destination == nil) ? [] : me.fp.destination.getApproachList();
+        me.selectableFields = [];
+        if (me.available) {
+            me.selectableFields = [
+                {
+                    row: 1,
+                    col: 2,
+                    accept: func {
+                        self.fp.approach = self.approaches[self.scrollPos];
+                        self.deselectField();
+                        self.redraw();
+                    },
+                },
+                {
+                    row: 2,
+                    col: 2,
+                    accept: func {
+                        self.fp.approach = self.approaches[self.scrollPos + 1];
+                        self.deselectField();
+                        self.redraw();
+                    },
+                },
+            ];
+        }
+        for (var i = 0; i < 5; i += 1) {
+            (func (i) {
+                append(self.selectableFields, {
+                    row: 2,
+                    col: 3 + i,
+                    changeValue: func (amount) {
+                        self.editableWaypointID = scrollChar(self.editableWaypointID, i, amount);
+                        self.redraw();
+                    }
+                });
+            })(i);
+        }
+        me.redraw();
+    },
+
+    redraw: func {
+        if (me.available) {
+            putLine(0,
+                sprintf("Rt 0 %4s %5s appr",
+                    me.fp.destination.id,
+                    (me.fp.approach == nil) ? 'slct' : '*actv'));
+            for (var i = 0; i < 2; i += 1) {
+                var pos = me.scrollPos + i;
+                var approach = me.approaches[pos] or nil;
+                var marker = ' ';
+                if (i == 1) {
+                    if (pos == 1)
+                        marker = sc.arrowDn;
+                    elsif (pos == size(me.approaches) - 1)
+                        marker = sc.arrowUp;
+                    else
+                        marker = sc.updown;
+                }
+                if (approach == nil)
+                    putLine(i + 1, marker);
+                else
+                    putLine(i + 1, sprintf('%1s%1s%s',
+                        marker, 
+                        (me.fp.approach != nil and approach == me.fp.approach.id) ? '*' : '',
+                        formatApproach(approach)));
+            }
+        }
+        else {
+            putScreen(["Rt 0 ----  slct appr", "NO ROUTE", ""]);
+        }
+    },
+
+    handleInput: func (what, amount=1) {
+        if (call(BasePage.handleInput, [what, amount], me)) {
+            return 1;
+        }
+        elsif (what == 'data-inner') {
+            me.scrollPos += amount;
+            if (!me.available)
+                me.scrollPos = 0;
+            else
+                me.scrollPos =
+                    math.min(size(me.approaches) - 2,
+                    math.max(0,
+                    me.scrollPos));
+            me.redraw();
+        }
+    },
+};

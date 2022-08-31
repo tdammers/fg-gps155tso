@@ -239,6 +239,17 @@ var updateReference = func {
 };
 
 var setDTO = func (waypoint) {
+    var fp = flightplan();
+    # If no current flightplan, and the DTO target is an airport, create a
+    # new flightplan; this is necessary to make the STAR select page work in
+    # such a scenario.
+    if (!fp.active and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
+        var apt = findAirportsByICAO(waypoint.id)[0];
+        if (fp.getPlanSize() == 0)
+            fp.departure = apt;
+        else
+            fp.destination = apt;
+    }
     var db = getWaypointDistanceAndBearing(waypoint);
     var type = '';
     var name = '';

@@ -192,14 +192,13 @@ var NavPage = {
             };
         },
 
-        start: func {
-            call(BasePage.start, [], me);
+        setSelectableFields: func {
             var self = me;
             me.selectableFields = [
                 { row: 2, col:  1,
                     changeValue: func (amount) {
                         changeRefMode(amount);
-                        self.updateVisibleWaypoint();
+                        visibleWaypoint = referenceWaypoint;
                         self.setSelectableFields();
                         self.redraw();
                     }
@@ -221,6 +220,7 @@ var NavPage = {
 
                                 searchAndConfirmWaypoint(searchID, self, func (waypoint) {
                                     referenceWaypoint = waypoint;
+                                    visibleWaypoint = referenceWaypoint;
                                     deviceProps.referenceSearchID.setValue(referenceWaypoint.id);
                                     updateReference();
                                 });
@@ -230,6 +230,11 @@ var NavPage = {
                     })(i);
                 }
             }
+        },
+
+        start: func {
+            call(BasePage.start, [], me);
+            me.setSelectableFields();
         },
 
         redraw: func {
@@ -272,6 +277,7 @@ var NavPage = {
         },
 
         update: func (dt) {
+            me.setSelectableFields();
             me.redraw();
         },
     },

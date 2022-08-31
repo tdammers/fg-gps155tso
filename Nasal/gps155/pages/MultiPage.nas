@@ -73,14 +73,14 @@ var MultiPage = {
 
     handleInput: func (what, amount=0) {
         var self = me;
-        if (call(BasePage.handleInput, [what, amount], me)) {
+        if (me.currentSubpage != nil and me.currentSubpage.handleInput(what, amount)) {
+            return 1;
+        }
+        elsif (call(BasePage.handleInput, [what, amount], me)) {
             return 1;
         }
         elsif (what == me.modeKey) {
             me.moveSubpage(1);
-            return 1;
-        }
-        elsif (me.currentSubpage != nil and me.currentSubpage.handleInput(what, amount)) {
             return 1;
         }
         elsif (what == 'data-outer') {
