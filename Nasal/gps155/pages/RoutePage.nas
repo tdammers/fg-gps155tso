@@ -221,6 +221,8 @@ var ActiveRoutePage = {
                         # confirm
                         func {
                             fp.cleanPlan();
+                            fp.departure = nil;
+                            fp.destination = nil;
                             RoutePage.scrollPos = 0;
                             loadPage(NavPage.new());
                         },
@@ -339,7 +341,14 @@ var STARSelectPage = {
             me.fp.star = me.fp.destination.getStar(procedure);
     },
     getRefWaypointName: func { return me.fp.destination.id; },
-    formatProcedure: func (procedure) { return procedure; },
+    formatProcedure: func (procedure) {
+        var star = me.fp.destination.getStar(procedure);
+        var runways = star.runways;
+        if (size(runways) == 1)
+            return sprintf("%-6s %4s", procedure, runways[0]);
+        else
+            return procedure;
+    },
     isCurrentProcedure: func (procedure) { return (me.fp.star != nil and procedure == me.fp.star.id); },
     procedureSelected: func { return me.fp.star != nil; },
 };
@@ -394,7 +403,14 @@ var SIDSelectPage = {
         }
     },
     getRefWaypointName: func { return me.fp.departure.id; },
-    formatProcedure: func (procedure) { return procedure; },
+    formatProcedure: func (procedure) {
+        var sid = me.fp.departure.getSid(procedure);
+        var runways = sid.runways;
+        if (size(runways) == 1)
+            return sprintf("%-6s %4s", procedure, runways[0]);
+        else
+            return procedure;
+    },
     isCurrentProcedure: func (procedure) { return (me.fp.sid != nil and procedure == me.fp.sid.id); },
     procedureSelected: func { return me.fp.sid != nil; },
 };
@@ -469,7 +485,7 @@ var ProcedureSelectPage = {
         me.procedures = me.getProcedures();
         for (var i = 0; i < size(me.procedures); i += 1) {
             if (me.isCurrentProcedure(me.procedures[i])) {
-                me.scrollPos = math.min(i, size(me.procedures) - 1);
+                me.scrollPos = math.min(i, size(me.procedures) - 2);
                 break;
             }
         }
@@ -514,7 +530,6 @@ var ProcedureSelectPage = {
                     me.getProcedureTypeName()));
             for (var i = 0; i < 2; i += 1) {
                 var pos = me.scrollPos + i;
-                var procedure = me.procedures[pos] or nil;
                 var marker = ' ';
                 if (i == 1) {
                     if (pos == 1)
@@ -524,13 +539,19 @@ var ProcedureSelectPage = {
                     else
                         marker = sc.updown;
                 }
-                if (procedure == nil)
+                if (pos >= size(me.procedures))  {
                     putLine(i + 1, marker);
-                else
-                    putLine(i + 1, sprintf('%1s%1s%s',
-                        marker, 
-                        me.isCurrentProcedure(procedure) ? '*' : '',
-                        me.formatProcedure(procedure)));
+                }
+                else {
+                    var procedure = me.procedures[pos] or nil;
+                    if (procedure == nil)
+                        putLine(i + 1, marker);
+                    else
+                        putLine(i + 1, sprintf('%1s%1s%s',
+                            marker, 
+                            me.isCurrentProcedure(procedure) ? '*' : '',
+                            me.formatProcedure(procedure)));
+                }
             }
         }
         else {

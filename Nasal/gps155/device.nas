@@ -245,10 +245,13 @@ var setDTO = func (waypoint) {
     # such a scenario.
     if (!fp.active and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
         var apt = findAirportsByICAO(waypoint.id)[0];
-        if (fp.getPlanSize() == 0)
+        if (fp.departure == nil) {
             fp.departure = apt;
-        else
+        }
+        elsif (fp.destination == nil) {
             fp.destination = apt;
+            fp.activate();
+        }
     }
     var db = getWaypointDistanceAndBearing(waypoint);
     var type = '';
