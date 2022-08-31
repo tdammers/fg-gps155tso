@@ -15,14 +15,7 @@ var MultiPage = {
         call(BasePage.start, [], me);
         me.pagePropListener = setlistener(me.currentPageProp, func (node) {
             var pageIndex = node.getValue();
-            if (me.currentSubpage != nil) {
-                me.currentSubpage.stop();
-            }
-            me.currentSubpage = me.getSubpage(pageIndex);
-            if (me.currentSubpage != nil) {
-                me.currentSubpage.start();
-                me.currentSubpage.redraw();
-            }
+            me.setSubpage(me.getSubpage(pageIndex));
         }, 1, 0);
     },
 
@@ -35,6 +28,17 @@ var MultiPage = {
             removelistener(me.pagePropListener);
         }
         me.pagePropListener = nil;
+    },
+
+    setSubpage: func(subpage) {
+        if (me.currentSubpage != nil) {
+            me.currentSubpage.stop();
+        }
+        me.currentSubpage = subpage;
+        if (me.currentSubpage != nil) {
+            me.currentSubpage.start();
+            me.currentSubpage.redraw();
+        }
     },
 
     getSubpage: func (i) {

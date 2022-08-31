@@ -7,14 +7,22 @@ var RoutePage = {
 
     SUBPAGE_ACTIVE_ROUTE: 0,
     SUBPAGE_APPROACH_SELECT: 1,
+    SUBPAGE_STAR_SELECT: 2,
+    SUBPAGE_SID_SELECT: 3,
 
-    getNumSubpages: func { return 2; },
+    getNumSubpages: func { return 4; },
     getSubpage: func (i) {
         if (i == RoutePage.SUBPAGE_ACTIVE_ROUTE) {
-            return ActiveRoutePage.new();
+            return ActiveRoutePage.new(me);
         }
         elsif (i == RoutePage.SUBPAGE_APPROACH_SELECT) {
-            return ApproachSelectPage.new();
+            return ApproachSelectPage.new(me);
+        }
+        elsif (i == RoutePage.SUBPAGE_STAR_SELECT) {
+            return STARSelectPage.new(me);
+        }
+        elsif (i == RoutePage.SUBPAGE_SID_SELECT) {
+            return SIDSelectPage.new(me);
         }
         else {
             return nil;
@@ -286,23 +294,177 @@ var ActiveRoutePage = {
 };
 
 var ApproachSelectPage = {
-    new: func {
-        var m = BasePage.new();
+    new: func (parentPage) {
+        var m = ProcedureSelectPage.new(parentPage);
         m.parents = [ApproachSelectPage] ~ m.parents;
-        m.selectedApproach = nil;
         m.fp = nil;
+        return m;
+    },
+
+    start: func {
+        me.fp = flightplan();
+        me.available = me.fp.active and me.fp.destination != nil;
+        call(ProcedureSelectPage.start, [], me);
+    },
+
+    getProcedures: func { return (me.fp.destination == nil) ? [] : me.fp.destination.getApproachList(); },
+    getProcedureTypeName: func { return 'appr'; },
+    selectProcedure: func (procedure) { me.fp.approach = procedure; },
+    getRefWaypointName: func { return me.fp.destination.id; },
+    formatProcedure: func (procedure) { return formatApproach(procedure); },
+    isCurrentProcedure: func (procedure) { return (me.fp.approach != nil and procedure == me.fp.approach.id); },
+    procedureSelected: func { return me.fp.approach != nil; },
+};
+
+var STARSelectPage = {
+    new: func (parentPage) {
+        var m = ProcedureSelectPage.new(parentPage);
+        m.parents = [STARSelectPage] ~ m.parents;
+        m.fp = nil;
+        return m;
+    },
+
+    start: func {
+        me.fp = flightplan();
+        me.available = me.fp.active and me.fp.destination != nil;
+        call(ProcedureSelectPage.start, [], me);
+    },
+
+    getProcedures: func { return (me.fp.destination == nil) ? [] : me.fp.destination.stars(); },
+    getProcedureTypeName: func { return 'star'; },
+    selectProcedure: func (procedure) {
+        me.fp.star = me.fp.destination.getStar(procedure);
+    },
+    getRefWaypointName: func { return me.fp.destination.id; },
+    formatProcedure: func (procedure) { return procedure; },
+    isCurrentProcedure: func (procedure) { return (me.fp.star != nil and procedure == me.fp.star.id); },
+    procedureSelected: func { return me.fp.star != nil; },
+};
+
+var SIDSelectPage = {
+    new: func (parentPage) {
+        var m = ProcedureSelectPage.new(parentPage);
+        m.parents = [SIDSelectPage] ~ m.parents;
+        m.fp = nil;
+        return m;
+    },
+
+    start: func {
+        me.fp = flightplan();
+        me.available = me.fp.active and me.fp.departure != nil;
+        call(ProcedureSelectPage.start, [], me);
+    },
+
+    getProcedures: func { return (me.fp.departure == nil) ? [] : me.fp.departure.sids(); },
+    getProcedureTypeName: func { return 'sid'; },
+    selectProcedure: func (procedure) {
+        var self = me;
+        var wpIndex = me.fp.current;
+        me.fp.sid = me.fp.departure.getSid(procedure);
+        if (size(me.fp.sid.transitions) > 1) {
+            me.parentPage.setSubpage(SIDTransitionSelectPage.new(me.parentPage));
+            me.fp.activate();
+            if (wpIndex == 0)
+                me.fp.current = 0;
+        }
+        elsif (size(me.fp.sid.runways) > 1) {
+            me.parentPage.setSubpage(RunwaySelectPage.new(me.parentPage,
+                me.fp.departure.id,
+                me.fp.sid.runways,
+                func (runwayID) {
+                    self.fp.departure_runway = self.fp.departure.runway(runwayID);
+                    self.fp.activate();
+                    if (wpIndex == 0)
+                        self.fp.current = 0;
+                }));
+        }
+        else {
+            me.fp.departure_runway = me.fp.departure.runway(me.fp.sid.runways[0]);
+            me.fp.activate();
+            if (wpIndex == 0)
+                me.fp.current = 0;
+        }
+    },
+    getRefWaypointName: func { return me.fp.departure.id; },
+    formatProcedure: func (procedure) { return procedure; },
+    isCurrentProcedure: func (procedure) { return (me.fp.sid != nil and procedure == me.fp.sid.id); },
+    procedureSelected: func { return me.fp.sid != nil; },
+};
+
+var RunwaySelectPage = {
+    new: func (parentPage, refID, runways, accept) {
+        var m = ProcedureSelectPage.new(parentPage);
+        m.parents = [RunwaySelectPage] ~ m.parents;
+        m.runways = runways;
+        m.accept = accept;
+        m.refID = refID;
+        return m;
+    },
+
+    start: func {
+        me.available = size(me.runways) > 0;
+        call(ProcedureSelectPage.start, [], me);
+    },
+
+    getProcedures: func { return me.runways; },
+    getProcedureTypeName: func { return 'rwy'; },
+    selectProcedure: func (procedure) {
+        me.accept(procedure);
+    },
+    getRefWaypointName: func { return me.refID; },
+    formatProcedure: func (procedure) { return procedure; },
+    isCurrentProcedure: func (procedure) { return 0; },
+    procedureSelected: func { return nil; },
+};
+
+var SIDTransitionSelectPage = {
+    new: func (parentPage) {
+        var m = ProcedureSelectPage.new(parentPage);
+        m.parents = [SIDTransitionSelectPage] ~ m.parents;
+        m.fp = nil;
+        return m;
+    },
+
+    start: func {
+        me.fp = flightplan();
+        me.available = me.fp.active and me.fp.sid != nil;
+        call(ProcedureSelectPage.start, [], me);
+    },
+
+    getProcedures: func { return (me.fp.sid == nil) ? [] : me.fp.sid.transitions; },
+    getProcedureTypeName: func { return 'trns'; },
+    selectProcedure: func (procedure) {
+        me.fp.sid_transition = procedure;
+    },
+    getRefWaypointName: func { return me.fp.sid.id; },
+    formatProcedure: func (procedure) { return procedure; },
+    isCurrentProcedure: func (procedure) { return (me.fp.sid_trans != nil and procedure == me.fp.sid_trans.id); },
+    procedureSelected: func { return me.fp.sid_trans != nil; },
+};
+
+
+var ProcedureSelectPage = {
+    new: func (parentPage) {
+        var m = BasePage.new();
+        m.parents = [ProcedureSelectPage] ~ m.parents;
+        m.selectedApproach = nil;
         m.available = 0;
         m.scrollPos = 0;
-        m.approaches = [];
+        m.procedures = [];
+        m.parentPage = parentPage;
         return m;
     },
 
     start: func {
         var self = me;
         call(BasePage.start, [], me);
-        me.fp = flightplan();
-        me.available = me.fp.active and me.fp.destination != nil;
-        me.approaches = (me.fp.destination == nil) ? [] : me.fp.destination.getApproachList();
+        me.procedures = me.getProcedures();
+        for (var i = 0; i < size(me.procedures); i += 1) {
+            if (me.isCurrentProcedure(me.procedures[i])) {
+                me.scrollPos = math.min(i, size(me.procedures) - 1);
+                break;
+            }
+        }
         me.selectableFields = [];
         if (me.available) {
             me.selectableFields = [
@@ -310,7 +472,7 @@ var ApproachSelectPage = {
                     row: 1,
                     col: 2,
                     accept: func {
-                        self.fp.approach = self.approaches[self.scrollPos];
+                        self.selectProcedure(self.procedures[self.scrollPos]);
                         self.deselectField();
                         self.redraw();
                     },
@@ -319,24 +481,12 @@ var ApproachSelectPage = {
                     row: 2,
                     col: 2,
                     accept: func {
-                        self.fp.approach = self.approaches[self.scrollPos + 1];
+                        self.selectProcedure(self.procedures[self.scrollPos + 1]);
                         self.deselectField();
                         self.redraw();
                     },
                 },
             ];
-        }
-        for (var i = 0; i < 5; i += 1) {
-            (func (i) {
-                append(self.selectableFields, {
-                    row: 2,
-                    col: 3 + i,
-                    changeValue: func (amount) {
-                        self.editableWaypointID = scrollChar(self.editableWaypointID, i, amount);
-                        self.redraw();
-                    }
-                });
-            })(i);
         }
         me.redraw();
     },
@@ -344,32 +494,37 @@ var ApproachSelectPage = {
     redraw: func {
         if (me.available) {
             putLine(0,
-                sprintf("Rt 0 %4s %5s appr",
-                    me.fp.destination.id,
-                    (me.fp.approach == nil) ? 'slct' : '*actv'));
+                sprintf("Rt 0 %4s %5s %4s",
+                    me.getRefWaypointName(),
+                    me.procedureSelected() ? '*actv' : 'slct',
+                    me.getProcedureTypeName()));
             for (var i = 0; i < 2; i += 1) {
                 var pos = me.scrollPos + i;
-                var approach = me.approaches[pos] or nil;
+                var procedure = me.procedures[pos] or nil;
                 var marker = ' ';
                 if (i == 1) {
                     if (pos == 1)
                         marker = sc.arrowDn;
-                    elsif (pos == size(me.approaches) - 1)
+                    elsif (pos == size(me.procedures) - 1)
                         marker = sc.arrowUp;
                     else
                         marker = sc.updown;
                 }
-                if (approach == nil)
+                if (procedure == nil)
                     putLine(i + 1, marker);
                 else
                     putLine(i + 1, sprintf('%1s%1s%s',
                         marker, 
-                        (me.fp.approach != nil and approach == me.fp.approach.id) ? '*' : '',
-                        formatApproach(approach)));
+                        me.isCurrentProcedure(procedure) ? '*' : '',
+                        me.formatProcedure(procedure)));
             }
         }
         else {
-            putScreen(["Rt 0 ----  slct appr", "NO ROUTE", ""]);
+            putScreen([
+                sprintf("Rt 0 ----  slct %4s", me.getProcedureTypeName()),
+                "NO ROUTE",
+                ""
+            ]);
         }
     },
 
@@ -383,7 +538,7 @@ var ApproachSelectPage = {
                 me.scrollPos = 0;
             else
                 me.scrollPos =
-                    math.min(size(me.approaches) - 2,
+                    math.min(size(me.procedures) - 2,
                     math.max(0,
                     me.scrollPos));
             me.redraw();
