@@ -11,23 +11,16 @@ var InitializationPage = {
     },
 
     redraw: func {
-        if (deviceProps.initializationTimer.getValue() > 0.1) {
-            putLine(0, sprintf(' GPS 155 Ver %s', version));
-            putLine(1, sc.copy ~ "1994-95 GARMIN Corp");
-            putLine(2, 'Performing self test');
-        }
-        else {
-            var status = deviceProps.receiver.status.getValue() or 0;
-            putScreen(formatSatStatus(status, satellites));
-        }
+        putLine(0, sprintf(' GPS 155 Ver %s', version));
+        putLine(1, sc.copy ~ "1994-95 GARMIN Corp");
+        putLine(2, 'Performing self test');
     },
 
     update: func (dt) {
-        if (deviceProps.receiver.acquiringTimeLeft.getValue() <= 0.0) {
-            # loadPage(NavPage.new());
-            loadPage(SettingsPage.new());
-        }
         me.redraw();
+        if (deviceProps.initializationTimer.getValue() <= 0.01) {
+            loadPage(DatabaseConfirmationPage.new());
+        }
     },
 
     handleInput: func (what, amount=0) {

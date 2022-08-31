@@ -622,7 +622,7 @@ var initDevice = func {
             }
             elsif (startupSpeed == 'fast') {
                 deviceProps.initializationTimer.setValue(3);
-                deviceProps.receiver.acquiringTimeLeft.setValue(6);
+                deviceProps.receiver.acquiringTimeLeft.setValue(12);
             }
             else {
                 deviceProps.initializationTimer.setValue(10);

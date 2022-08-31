@@ -333,7 +333,10 @@ var STARSelectPage = {
     getProcedures: func { return (me.fp.destination == nil) ? [] : me.fp.destination.stars(); },
     getProcedureTypeName: func { return 'star'; },
     selectProcedure: func (procedure) {
-        me.fp.star = me.fp.destination.getStar(procedure);
+        if (procedure == nil)
+            me.fp.star = nil;
+        else
+            me.fp.star = me.fp.destination.getStar(procedure);
     },
     getRefWaypointName: func { return me.fp.destination.id; },
     formatProcedure: func (procedure) { return procedure; },
@@ -360,29 +363,34 @@ var SIDSelectPage = {
     selectProcedure: func (procedure) {
         var self = me;
         var wpIndex = me.fp.current;
-        me.fp.sid = me.fp.departure.getSid(procedure);
-        if (size(me.fp.sid.transitions) > 1) {
-            me.parentPage.setSubpage(SIDTransitionSelectPage.new(me.parentPage));
-            me.fp.activate();
-            if (wpIndex == 0)
-                me.fp.current = 0;
-        }
-        elsif (size(me.fp.sid.runways) > 1) {
-            me.parentPage.setSubpage(RunwaySelectPage.new(me.parentPage,
-                me.fp.departure.id,
-                me.fp.sid.runways,
-                func (runwayID) {
-                    self.fp.departure_runway = self.fp.departure.runway(runwayID);
-                    self.fp.activate();
-                    if (wpIndex == 0)
-                        self.fp.current = 0;
-                }));
+        if (procedure == nil) {
+            me.fp.sid = nil;
         }
         else {
-            me.fp.departure_runway = me.fp.departure.runway(me.fp.sid.runways[0]);
-            me.fp.activate();
-            if (wpIndex == 0)
-                me.fp.current = 0;
+            me.fp.sid = me.fp.departure.getSid(procedure);
+            if (size(me.fp.sid.transitions) > 1) {
+                me.parentPage.setSubpage(SIDTransitionSelectPage.new(me.parentPage));
+                me.fp.activate();
+                if (wpIndex == 0)
+                    me.fp.current = 0;
+            }
+            elsif (size(me.fp.sid.runways) > 1) {
+                me.parentPage.setSubpage(RunwaySelectPage.new(me.parentPage,
+                    me.fp.departure.id,
+                    me.fp.sid.runways,
+                    func (runwayID) {
+                        self.fp.departure_runway = self.fp.departure.runway(runwayID);
+                        self.fp.activate();
+                        if (wpIndex == 0)
+                            self.fp.current = 0;
+                    }));
+            }
+            else {
+                me.fp.departure_runway = me.fp.departure.runway(me.fp.sid.runways[0]);
+                me.fp.activate();
+                if (wpIndex == 0)
+                    me.fp.current = 0;
+            }
         }
     },
     getRefWaypointName: func { return me.fp.departure.id; },
@@ -473,6 +481,12 @@ var ProcedureSelectPage = {
                     col: 2,
                     accept: func {
                         self.selectProcedure(self.procedures[self.scrollPos]);
+                        self.deselectField();
+                        self.redraw();
+                    },
+                    erase: func {
+                        print("Erase");
+                        self.selectProcedure(nil);
                         self.deselectField();
                         self.redraw();
                     },
