@@ -14,7 +14,7 @@ var MultiPage = {
         var self = me;
         call(BasePage.start, [], me);
         me.pagePropListener = setlistener(me.currentPageProp, func (node) {
-            var pageIndex = node.getValue();
+            var pageIndex = node.getValue() or 0;
             me.setSubpage(me.getSubpage(pageIndex));
         }, 1, 0);
     },
