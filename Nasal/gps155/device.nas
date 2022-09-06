@@ -107,11 +107,12 @@ var updateSequencing = func {
     }
     elsif (mode == 'dto') {
         # direct-to is done, check if we should resume the following leg
-        var index = fp.indexOfWP(deviceProps.wp[1].latitude,
-                                 deviceProps.wp[1].longitude);
+        var lat = deviceProps.wp[1].latitude.getValue();
+        var lng = deviceProps.wp[1].longitude.getValue();
+        var index = fp.indexOfWP(lat, lng);
         
         if (index >= 0) {
-            fp.current = index - 1;
+            fp.current = index;
             legModeNext = 1;
         }
     }
