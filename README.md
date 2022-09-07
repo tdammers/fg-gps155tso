@@ -114,14 +114,17 @@ GPS155TSO will display the legs on the NAV CDI page.
 - Font and canvas display
 - NAV CDI and NAV Position screens
 - DTO key from NAV Position screen
+- RTE
+- SET (partial)
 - Waypoint Confirm screen
+- Waypoint Select screen
 
 ### Features To Add
 
-- Waypoint Select screen
+- NAV menus
 - NRST
-- SET
-- RTE
 - WPT
 - MSG
+- Approaches
 - Animate buttons & knobs
+- Various bits & pieces
