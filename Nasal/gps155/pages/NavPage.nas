@@ -32,27 +32,60 @@ var NavPage = {
 
     CDIPage: {
         new: func {
-            return {
-                parents: [NavPage.CDIPage, BasePage],
-            };
+            var m = BasePage.new();
+            m.parents = [NavPage.CDIPage] ~ m.parents;
+            m.editingWPT = nil;
+            return m;
         },
 
         start: func {
             call(BasePage.start, [], me);
             var self = me;
-            me.selectableFields = [
-                { row: 2, col: 6,
-                    changeValue: func (amount) {},
-                    erase: func {
-                        var mode = deviceProps.mode.getValue();
-                        if (mode == 'dto' and flightplan() != nil and flightplan().getPlanSize() > 1) {
-                            deviceProps.command.setValue('leg');
-                        }
-                        else {
-                            deviceProps.command.setValue('obs');
-                        }
-                    }
-                },
+            me.updateSelectableFields();
+        },
+
+        updateSelectableFields: func {
+            var self = me;
+            me.selectableFields = [];
+            var editingWPT = me.editingWPT or '';
+            for (var i = 0; i <= size(editingWPT) and i < 5; i += 1) {
+                (func (i) {
+                    append(me.selectableFields,
+                        { row: 2, col: 6 + i,
+                            changeValue: func (amount) {
+                                self.editingWPT = scrollChar(editingWPT, i, amount);
+                                self.updateSelectableFields();
+                                self.redraw();
+                            },
+                            stop: func {
+                                self.editingWPT = nil;
+                                self.updateSelectableFields();
+                                self.redraw();
+                                return 1;
+                            },
+                            accept: func {
+                                printf("Accept WP: %s", self.editingWPT);
+                                searchAndConfirmWaypoint(self.editingWPT, self, func (waypoint) {
+                                    setDTO(waypoint);
+                                    self.editingWPT = nil;
+                                    self.updateSelectableFields();
+                                    self.redraw();
+                                });
+                                return 1;
+                            },
+                            erase: func {
+                                var mode = deviceProps.mode.getValue();
+                                if (mode == 'dto' and flightplan() != nil and flightplan().getPlanSize() > 1) {
+                                    deviceProps.command.setValue('leg');
+                                }
+                                else {
+                                    deviceProps.command.setValue('obs');
+                                }
+                            }
+                        });
+                })(i);
+            }
+            append(me.selectableFields,
                 { row: 0, col: 12,
                     changeValue: func (amount) {
                         cycleProp(deviceProps.settings.fields.cdi.gs,
@@ -76,8 +109,7 @@ var NavPage = {
                             amount);
                         self.redraw();
                     }
-                },
-            ];
+                });
         },
 
         update: func (dt) {
@@ -106,6 +138,11 @@ var NavPage = {
             var trackFormatted = "___";
             var legInfo = "_____" ~ sc.arrowR ~ "_____";
             var eteFormatted = "__:__";
+
+            if (me.editingWPT != nil) {
+                tgtID = substr(me.editingWPT ~ "_____", 0, 5);
+                legInfo = "_____" ~ sc.arrowR ~ tgtID;
+            }
 
             if (tgtID != '' or mode == 'obs') {
                 var needlePos = 5 + math.min(5, math.max(-5, math.round(cte / 2)));

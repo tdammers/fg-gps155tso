@@ -223,7 +223,7 @@ var ActiveRoutePage = {
                             fp.cleanPlan();
                             fp.departure = nil;
                             fp.destination = nil;
-                            RoutePage.scrollPos = 0;
+                            ActiveRoutePage.scrollPos = 0;
                             loadPage(NavPage.new());
                         },
                         # reject
@@ -235,9 +235,9 @@ var ActiveRoutePage = {
         }
         elsif (what == 'DCT') {
             (func (returnPage) {
-                var wp = fp.getWP(RoutePage.scrollPos + 1);
+                var wp = fp.getWP(ActiveRoutePage.scrollPos + 1);
                 if (wp != nil) {
-                    # debug.dump(wp);
+                    debug.dump(wp);
                     loadPage(
                         WaypointConfirmPage.new(
                             wp,
@@ -256,10 +256,11 @@ var ActiveRoutePage = {
                     # If no "current" waypoint is defined, fire up a waypoint
                     # selector menu (TODO).
                 }
+                return 1;
             })(currentPage);
         }
         elsif (what == 'ENT' and me.deletingWaypoint) {
-            fp.deleteWP(RoutePage.scrollPos + 1);
+            fp.deleteWP(ActiveRoutePage.scrollPos + 1);
             me.deletingWaypoint = 0;
             me.selectedField = -1;
             unsetCursor();
@@ -272,11 +273,11 @@ var ActiveRoutePage = {
                 if (fp.getPlanSize() == 1 and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
                     fp.destination = findAirportsByICAO(waypoint.id)[0];
                 }
-                elsif (RoutePage.scrollPos >= fp.getPlanSize())
+                elsif (ActiveRoutePage.scrollPos >= fp.getPlanSize())
                     fp.appendWP(leg);
                 else
-                    fp.insertWPAfter(leg, RoutePage.scrollPos);
-                RoutePage.scrollPos += 1;
+                    fp.insertWPAfter(leg, ActiveRoutePage.scrollPos);
+                ActiveRoutePage.scrollPos += 1;
             });
         }
         elsif (what == 'ENT' and deviceProps.mode.getValue() != 'leg') {

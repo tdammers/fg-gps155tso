@@ -20,6 +20,10 @@ var BasePage = {
     handleInput: func (what, amount=0) {
         if (what == 'CRSR') {
             if (me.selectedField >= 0) {
+                var field = me.selectableFields[me.selectedField];
+                if (contains(field, 'stop')) {
+                    field.stop();
+                }
                 me.selectedField = -1;
                 unsetCursor();
                 return 1;
@@ -28,6 +32,9 @@ var BasePage = {
                 me.selectedField = 0;
                 var field = me.selectableFields[me.selectedField];
                 setCursor(field.row, field.col);
+                if (contains(field, 'start')) {
+                    field.start();
+                }
                 return 1;
             }
         }
@@ -60,6 +67,10 @@ var BasePage = {
         }
         elsif (what == 'data-outer') {
             if (me.selectedField >= 0 and size(me.selectableFields) > 0) {
+                var field = me.selectableFields[me.selectedField];
+                if (contains(field, 'stop')) {
+                    field.stop();
+                }
                 me.selectedField += amount;
                 while (me.selectedField < 0) {
                     me.selectedField += size(me.selectableFields);
@@ -68,6 +79,9 @@ var BasePage = {
                     me.selectedField -= size(me.selectableFields);
                 }
                 var field = me.selectableFields[me.selectedField];
+                if (contains(field, 'stop')) {
+                    field.stop();
+                }
                 setCursor(field.row, field.col);
                 return 1;
             }

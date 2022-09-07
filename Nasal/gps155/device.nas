@@ -99,57 +99,24 @@ var updateSequencing = func {
     var mode = deviceProps.mode.getValue();
     var leg = nil;
     var nextLeg = nil;
-    var legModeNext = 0;
 
     if (mode == 'obs') {
         # Nothing to do
         return;
     }
     elsif (mode == 'dto') {
-        # direct-to is done, check if we should resume the following leg
         var lat = deviceProps.wp[1].latitude.getValue();
         var lng = deviceProps.wp[1].longitude.getValue();
-        var index = fp.indexOfWP(lat, lng);
-        
-        if (index >= 0) {
-            fp.current = index;
-            legModeNext = 1;
-        }
-    }
-
-    leg = fp.getWP(fp.current);
-    nextLeg = fp.getWP(fp.current + 1);
-
-    if (leg == nil) return;
-    var acpos = geo.aircraft_position();
-    var (crs, dist) = leg.courseAndDistanceFrom(acpos);
-    var gs = deviceProps.groundspeed.getValue();
-    var track = deviceProps.groundspeed.getValue();
-    var alt = deviceProps.altitude.getValue();
-    var advance = 0;
-    if (leg.wp_type == 'hdgToAlt') {
-        if (alt >= leg.alt_cstr) {
-            advance = 1;
-        }
-    }
-    elsif (leg.fly_type == 'flyOver' or nextLeg == nil) {
+        var acpos = geo.aircraft_position();
+        var targetCoord = geo.Coord.new();
+        targetCoord.set_latlon(lat, lng);
+        var dist = acpos.distance_to(targetCoord);
         if (dist < 0.25) {
-            advance = 1;
-        }
-    }
-    else {
-        var courseDiff = math.min(90, math.abs(geo.normdeg180(nextLeg.leg_bearing - track)));
-        var r = gs / 60 / math.pi;
-        var thresholdDist = math.sin(courseDiff * D2R * 0.5) * r + 0.25;
-        # debug.dump(leg.wp_name, gs, courseDiff, r, dist, thresholdDist);
-        if (dist <= thresholdDist) {
-            advance = 1;
-        }
-    }
-    if (advance) {
-        if (mode == 'dto') {
-            if (legModeNext) {
-                fp.current += 1;
+            # direct-to is done, check if we should resume the following leg
+            var index = fp.indexOfWP(lat, lng);
+
+            if (index >= 0) {
+                fp.current = index;
                 deviceProps.command.setValue('leg');
             }
             else {
@@ -158,8 +125,36 @@ var updateSequencing = func {
                 deviceProps.command.setValue('obs');
             }
         }
+    }
+    else {
+        leg = fp.getWP(fp.current);
+        nextLeg = fp.getWP(fp.current + 1);
+
+        if (leg == nil) return;
+        var acpos = geo.aircraft_position();
+        var (crs, dist) = leg.courseAndDistanceFrom(acpos);
+        var gs = deviceProps.groundspeed.getValue();
+        var track = deviceProps.groundspeed.getValue();
+        var alt = deviceProps.altitude.getValue();
+        var advance = 0;
+        if (leg.wp_type == 'hdgToAlt') {
+            if (alt >= leg.alt_cstr) {
+                fp.current += 1;
+            }
+        }
+        elsif (leg.fly_type == 'flyOver' or nextLeg == nil) {
+            if (dist < 0.25) {
+                fp.current += 1;
+            }
+        }
         else {
-            fp.current += 1;
+            var courseDiff = math.min(90, math.abs(geo.normdeg180(nextLeg.leg_bearing - track)));
+            var r = gs / 60 / math.pi;
+            var thresholdDist = math.sin(courseDiff * D2R * 0.5) * r + 0.25;
+            # debug.dump(leg.wp_name, gs, courseDiff, r, dist, thresholdDist);
+            if (dist <= thresholdDist) {
+                fp.current += 1;
+            }
         }
     }
 };
@@ -208,7 +203,7 @@ var updateReference = func {
     var range = 10;
     var mode = deviceProps.referenceMode.getValue() or '';
     var type = contains(waypointTypesToFixTypes, mode) ? waypointTypesToFixTypes[mode] : '';
-    
+
     if (mode == 'wpt') {
         candidates = [referenceWaypoint];
     }
