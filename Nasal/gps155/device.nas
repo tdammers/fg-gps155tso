@@ -7,7 +7,6 @@ var visibleWaypoint = nil;
 # page.
 var referenceWaypoint = nil;
 
-var powered = 0;
 var satellites = [];
 var satsUsed = {};
 var n = 0;
@@ -75,7 +74,7 @@ var loadPage = func (page) {
 };
 
 var update = func (dt) {
-    if (!powered) return;
+    if (!deviceProps.powered.getBoolValue()) return;
     if (currentPage != nil) {
         currentPage.update(dt);
     }
@@ -353,7 +352,7 @@ receiverStatusTexts[RECEIVER_STATUS_2DNAV] = '2D Nav';
 receiverStatusTexts[RECEIVER_STATUS_3DNAV] = '3D Nav';
 
 var updateReceiver = func (dt) {
-    if (powered) {
+    if (deviceProps.powered.getBoolValue()) {
         var status = deviceProps.receiver.status.getValue();
         if (status == RECEIVER_STATUS_ACQUIRING) {
             var t = deviceProps.receiver.acquiringTimeLeft.getValue() or 0;
@@ -610,7 +609,7 @@ var initDevice = func {
     # Allow device to be powered up
     setlistener('controls/gps155/power', func (node) {
         if (node.getBoolValue()) {
-            powered = 1;
+            deviceProps.powered.setValue(1);
             updateTimer.start();
             deviceProps.receiver.status.setValue(RECEIVER_STATUS_ACQUIRING);
 
@@ -630,7 +629,7 @@ var initDevice = func {
             loadPage(InitializationPage.new());
         }
         else {
-            powered = 0;
+            deviceProps.powered.setValue(0);
             updateTimer.stop();
             loadPage(nil);
             deviceProps.receiver.status.setValue(RECEIVER_STATUS_OFF);

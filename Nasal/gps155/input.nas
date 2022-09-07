@@ -2,7 +2,7 @@ var dataKnobValues = { inner: 0, outer: 0 };
 var dataKnobProps = {};
 
 var handleInput = func (what, amount=0) {
-    if (!powered) return;
+    if (!deviceProps.powered.getBoolValue()) return;
     if (currentPage != nil) {
         if (currentPage.handleInput(what, amount)) {
             return;
