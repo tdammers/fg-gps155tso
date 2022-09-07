@@ -237,7 +237,7 @@ var ActiveRoutePage = {
             (func (returnPage) {
                 var wp = fp.getWP(ActiveRoutePage.scrollPos + 1);
                 if (wp != nil) {
-                    debug.dump(wp);
+                    # debug.dump(wp);
                     loadPage(
                         WaypointConfirmPage.new(
                             wp,

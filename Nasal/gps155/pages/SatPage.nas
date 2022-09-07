@@ -19,8 +19,8 @@ var SatPage = {
     },
 
     update: func (dt) {
-        debug.dump(deviceProps.receiver.status.getValue());
-        debug.dump(deviceProps.receiver.acquiringTimeLeft.getValue());
+        # debug.dump(deviceProps.receiver.status.getValue());
+        # debug.dump(deviceProps.receiver.acquiringTimeLeft.getValue());
         if (deviceProps.receiver.status.getValue() > 0) {
             loadPage(NavPage.new());
         }
