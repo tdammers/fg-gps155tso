@@ -271,7 +271,7 @@ var ActiveRoutePage = {
             searchAndConfirmWaypoint(me.editableWaypointID, self, func (waypoint) {
                 var leg = createWP(waypoint.lat, waypoint.lon, waypoint.ident);
                 if (fp.getPlanSize() == 1 and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
-                    fp.destination = findAirportsByICAO(waypoint.id)[0];
+                    fp.destination = airportinfo(waypoint.id);
                 }
                 elsif (ActiveRoutePage.scrollPos >= fp.getPlanSize())
                     fp.appendWP(leg);

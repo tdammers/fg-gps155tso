@@ -239,7 +239,7 @@ var setDTO = func (waypoint) {
     # new flightplan; this is necessary to make the STAR select page work in
     # such a scenario.
     if (!fp.active and (ghosttype(waypoint) == 'airport' or ghosttype(waypoint) == 'FGAirport')) {
-        var apt = findAirportsByICAO(waypoint.id)[0];
+        var apt = airportinfo(waypoint.id);
         if (fp.departure == nil) {
             fp.departure = apt;
         }
