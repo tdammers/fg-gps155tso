@@ -27,6 +27,22 @@ var sc = {
     'ff': utf8.chstr(0x92),
     'mp': utf8.chstr(0x93),
 
+    'cdiFromL3': utf8.chstr(0x94),
+    'cdiFromL2': utf8.chstr(0x95),
+    'cdiFromL1': utf8.chstr(0x96),
+    'cdiFromC': utf8.chstr(0x19),
+    'cdiFromR1': utf8.chstr(0x97),
+    'cdiFromR2': utf8.chstr(0x98),
+    'cdiFromR3': utf8.chstr(0x99),
+
+    'cdiToL3': utf8.chstr(0x9a),
+    'cdiToL2': utf8.chstr(0x9b),
+    'cdiToL1': utf8.chstr(0x9c),
+    'cdiToC': utf8.chstr(0x18),
+    'cdiToR1': utf8.chstr(0x9d),
+    'cdiToR2': utf8.chstr(0x9e),
+    'cdiToR3': utf8.chstr(0x9f),
+
     'copy': utf8.chstr(0xb9),
     'deg': utf8.chstr(0xc0),
     'degC': utf8.chstr(0xc4),
@@ -456,10 +472,10 @@ var formatDistance = func (dist, inUnit='nm') {
     var symbol = units[outUnit].symbol;
 
     if (displayValue > 99999) {
-        return '+++++';
+        return '+++++ ';
     }
     elsif (displayValue < 0) {
-        return '-----';
+        return '----- ';
     }
     elsif (displayValue < 100) {
         var i = math.floor(displayValue);
