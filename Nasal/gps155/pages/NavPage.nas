@@ -119,7 +119,6 @@ var NavPage = {
 
         redraw: func {
             var mode = getprop('/instrumentation/gps/mode') or 'obs';
-            var cte = getprop('/instrumentation/gps/cdi-deflection') or 0;
             var tgtID = getprop('/instrumentation/gps/wp/wp[1]/ID') or '';
             var fromID = getprop('/instrumentation/gps/wp/wp[0]/ID') or '';
             var fromFlag = getprop('/instrumentation/gps/from-flag') or 0;
