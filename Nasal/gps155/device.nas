@@ -595,6 +595,7 @@ var initDevice = func {
             },
             route: {
                 distanceMode: props.globals.getNode('instrumentation/gps155/settings/fields/route/distance-mode', 1),
+                legExtraMode: props.globals.getNode('instrumentation/gps155/settings/fields/route/leg-extra-mode', 1),
             },
         },
         startupSpeed: props.globals.getNode('instrumentation/gps155/settings/startup-speed', 1),
@@ -611,6 +612,7 @@ var initDevice = func {
     setPropDefault(deviceProps.settings.units.temperature, 'degC');
     setPropDefault(deviceProps.settings.startupSpeed, 'realistic');
     setPropDefault(deviceProps.settings.fields.route.distanceMode, 'leg');
+    setPropDefault(deviceProps.settings.fields.route.legExtraMode, 'dtk');
 
     deviceProps['currentPage'] = {
         nav: props.globals.getNode('instrumentation/gps155/currentPage/nav', 1),
@@ -643,6 +645,7 @@ var initDevice = func {
             latitude: props.globals.getNode('instrumentation/gps/wp/wp[1]/latitude-deg'),
             longitude: props.globals.getNode('instrumentation/gps/wp/wp[1]/longitude-deg'),
             name: props.globals.getNode('instrumentation/gps/wp/wp[1]/name'),
+            distance: props.globals.getNode('instrumentation/gps/wp/wp[1]/distance-nm'),
         },
     ];
 

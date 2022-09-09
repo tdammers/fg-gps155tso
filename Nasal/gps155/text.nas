@@ -480,15 +480,15 @@ var formatDistance = func (dist, inUnit='nm') {
     elsif (displayValue < 100) {
         var i = math.floor(displayValue);
         var f = math.floor((displayValue - i) * 100);
-        return sprintf('%3i', i) ~ smallStr(sprintf('.%02i', f)) ~ symbol;
+        return sprintf('%2i', i) ~ smallStr(sprintf('.%02i', f)) ~ symbol;
     }
     elsif (displayValue < 1000) {
         var i = math.floor(displayValue);
         var f = math.floor((displayValue - i) * 10);
-        return sprintf('%4i', i) ~ smallStr(sprintf('.%01i', f)) ~ symbol;
+        return sprintf('%3i', i) ~ smallStr(sprintf('.%01i', f)) ~ symbol;
     }
     else {
-        return sprintf('%5i', displayValue) ~ symbol;
+        return sprintf('%4i', displayValue) ~ symbol;
     }
 };
 

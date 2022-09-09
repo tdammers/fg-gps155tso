@@ -128,6 +128,8 @@ var NavPage = {
             var tgtDST = getprop('/instrumentation/gps/wp/wp[1]/distance-nm');
             var legTRK = getprop('/instrumentation/gps/wp/leg-mag-course-deg');
             var ete = getprop('/instrumentation/gps/wp/wp[1]/TTW') or '';
+            var eta = (getprop('/instrumentation/gps/wp/wp[1]/TTW-sec') or 0) +
+                      (getprop('/sim/time/utc/day-seconds') or 0);
             var gs = getprop('/instrumentation/gps/indicated-ground-speed-kt') or 0;
             var cte = getprop('/instrumentation/gps/wp/wp[1]/course-error-nm') or 0;
             var trk = getprop('/instrumentation/gps/indicated-track-magnetic-deg') or 0;
@@ -227,6 +229,12 @@ var NavPage = {
                     else
                         return 'ete' ~ substr(ete or '__:__', 0, 5);
                 }
+                elsif (type == 'eta') {
+                    var minutesRaw = math.round(eta / 60) + 1440;
+                    var minutes = math.mod(minutesRaw, 60);
+                    var hours = math.mod(math.floor(minutesRaw / 60), 24);
+                    return sprintf('eta%02i:%02i', hours, minutes);
+                }
                 else {
                     # TODO: dis, cts, trn, vn
                     return sprintf('%-3s ____', type);
@@ -240,7 +248,7 @@ var NavPage = {
             }
 
             putLine(0, cdiFormatted ~ " " ~ formattedFields.gs);
-            putLine(1, "dis " ~ distanceFormatted ~ '  ' ~ formattedFields.trk);
+            putLine(1, "dis " ~ distanceFormatted ~ '   ' ~ formattedFields.trk);
             putLine(2, legInfo ~ " " ~ formattedFields.ete);
         },
     },

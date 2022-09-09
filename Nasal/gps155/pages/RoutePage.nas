@@ -93,6 +93,15 @@ var ActiveRoutePage = {
                 self.redraw();
               }
             });
+        append(self.selectableFields,
+            { row: 0, col: 17,
+              changeValue: func(amount) {
+                cycleProp(deviceProps.settings.fields.route.legExtraMode,
+                    ['dtk', 'ete', 'eta'],
+                    amount);
+                self.redraw();
+              }
+            });
     },
 
     update: func (dt) {
@@ -125,13 +134,15 @@ var ActiveRoutePage = {
         }
 
         var distMode = deviceProps.settings.fields.route.distanceMode.getValue();
-        lines[0] = sprintf('%-11s %3s dtk', legInfo, distMode);
+        var extraMode = deviceProps.settings.fields.route.legExtraMode.getValue();
+        lines[0] = sprintf('%-11s %3s  %3s', legInfo, distMode, extraMode);
 
         if (fp != nil and fp.getPlanSize() > 1) {
             for (var y = 0; y < 2; y += 1) {
                 var index = ActiveRoutePage.scrollPos + y;
                 var wp = fp.getWP(index);
                 var wpPrev = (index > 0) ? fp.getWP(index - 1) : nil;
+                var wpCurr = fp.currentWP();
                 var current = index == fp.current;
                 var first = ActiveRoutePage.scrollPos == 0;
                 var last = ActiveRoutePage.scrollPos >= fp.getPlanSize() - 1;
@@ -153,8 +164,8 @@ var ActiveRoutePage = {
                     }
                 }
 
-                var distStr = '__.___';
-                var bearingStr = '___°';
+                var distStr = '__' ~ smallStr('.___');
+                var extraStr = '_____';
                 var identStr = '';
                 var wpSymbol = '';
 
@@ -176,7 +187,24 @@ var ActiveRoutePage = {
                         distStr = formatDistance(wp.distance_along_route);
                     elsif (distMode == 'rem')
                         distStr = formatDistance ((getprop('/autopilot/route-manager/total-distance') or 0) - wp.distance_along_route);
-                    bearingStr = formatHeading(wp.leg_bearing);
+                    if (extraMode == 'dtk')
+                        extraStr = ' ' ~ formatHeading(wp.leg_bearing);
+                    elsif (extraMode == 'ete') {
+                        var gs = math.max(100, deviceProps.groundspeed.getValue() or 0);
+                        var eteMinutesRaw = math.round(60 * wp.leg_distance / gs);
+                        var eteMinutes = math.mod(eteMinutesRaw, 60);
+                        var eteHours = math.floor(eteMinutesRaw / 60);
+                        extraStr = sprintf("%2i:%02i", eteHours, eteMinutes);
+                    }
+                    elsif (extraMode == 'eta') {
+                        var distIntoRoute = wpCurr.distance_along_route - deviceProps.wp[1].distance.getValue();
+                        var gs = math.max(100, deviceProps.groundspeed.getValue() or 0);
+                        var eteMinutesRaw = 60 * (wp.distance_along_route - distIntoRoute)  / gs;
+                        var etaMinutesRaw = math.round(getprop('/sim/time/utc/day-seconds') / 60 + eteMinutesRaw);
+                        var etaMinutes = math.mod(etaMinutesRaw, 60);
+                        var etaHours = math.mod(math.floor(etaMinutesRaw / 60), 24);
+                        extraStr = sprintf("%02i:%02i", etaHours, etaMinutes);
+                    }
                     identStr = navid5(wp.id, 5);
                 }
 
@@ -187,19 +215,19 @@ var ActiveRoutePage = {
                         current ? sc.arrowR : ':');
                 }
                 else {
-                    lines[y+1] = sprintf('%1s%1s%1s%-5s %5s %4s',
+                    lines[y+1] = sprintf('%1s%1s%1s%-5s %5s %-5s',
                         (y == 0) ? ' ' : scrollSymbol,
                         wpSymbol,
                         current ? sc.arrowR : ':',
                         identStr,
                         distStr,
-                        bearingStr);
+                        extraStr);
                 }
             }
         }
         else {
             if (me.editingWaypoint()) {
-                lines[2] = sprintf('   %-5s _____ ___°', me.editableWaypointID);
+                lines[2] = sprintf('   %-5s______ ___ ', me.editableWaypointID);
             }
         }
 
