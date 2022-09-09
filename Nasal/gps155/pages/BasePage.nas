@@ -24,8 +24,7 @@ var BasePage = {
                 if (contains(field, 'stop')) {
                     field.stop();
                 }
-                me.selectedField = -1;
-                unsetCursor();
+                me.deselectField();
                 return 1;
             }
             elsif (size(me.selectableFields) > 0) {

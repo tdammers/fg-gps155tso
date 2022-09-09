@@ -44,6 +44,13 @@ var NavPage = {
             me.updateSelectableFields();
         },
 
+        deselectField: func {
+            call(BasePage.deselectField, [], me);
+            me.editingWPT = nil;
+            me.updateSelectableFields();
+            me.redraw();
+        },
+
         updateSelectableFields: func {
             var self = me;
             me.selectableFields = [];
@@ -56,12 +63,6 @@ var NavPage = {
                                 self.editingWPT = scrollChar(editingWPT, i, amount);
                                 self.updateSelectableFields();
                                 self.redraw();
-                            },
-                            stop: func {
-                                self.editingWPT = nil;
-                                self.updateSelectableFields();
-                                self.redraw();
-                                return 1;
                             },
                             accept: func {
                                 printf("Accept WP: %s", self.editingWPT);
