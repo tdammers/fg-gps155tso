@@ -550,6 +550,20 @@ var shorten = func (str, maxlen) {
            utf8.substr(str, utf8.size(str) - (maxlen - 2 - half));
 };
 
+var longSpace = '                                                             ';
+
+var alignCenter = func (str, maxlen) {
+    var l = utf8.size(str);
+    if (l > maxlen) {
+        return shorten(str, maxlen);
+    }
+    else {
+        var left = math.floor((maxlen - l) / 2);
+        var right = maxlen - l - left;
+        return substr(longSpace, 0, left) ~ str ~ substr(longSpace, 0, right);
+    }
+};
+
 var navid5 = func (str) {
     if (utf8.size(str) <= 5) return str;
     if (string.match(str, '*-*')) {

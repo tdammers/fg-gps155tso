@@ -482,6 +482,55 @@ var FPDelegate = {
     currentWaypointChanged: func { },
 };
 
+var loadCycleInfo = func (filename) {
+    var str = io.readfile(filename);
+    var lines = split("\n", str);
+    var dict = {};
+    foreach (var line; lines) {
+        var kv = split(":", string.trim(line));
+        if (size(kv) >= 2) {
+            var k = string.trim(kv[0]);
+            var v = string.trim(string.join(':', subvec(kv, 1)));
+            dict[k] = v;
+        }
+    }
+    var airac = dict['AIRAC cycle'];
+    var validityRaw = split('-', dict['Valid (from/to)'] or '');
+    var validFrom = split('/', string.trim(validityRaw[0]));
+    var validTo = split('/', string.trim(validityRaw[1]));
+    var name = 'WORLD IFR';
+    if (dict['Forum'] == 'http://forum.navigraph.com')
+        name = 'NAVIGRAPH WORLD IFR';
+    return {
+        name: name,
+        eff: formatAiracDate(validFrom),
+        exp: formatAiracDate(validTo),
+        airac: airac,
+    };
+};
+
+var formatAiracDate = func (dmy) {
+    return dmy[0] ~ '-' ~ string.lc(dmy[1]) ~ '-' ~ substr(dmy[2], -2);
+};
+
+var defaultCycleInfo = {
+    name: 'FG WORLD IFR',
+    airac: '1310',
+    eff: ['19-sep-2013'],
+    exp: ['16-oct-2013'],
+};
+
+var loadNavDBInfo = func {
+    var sceneryDirNodes = props.globals.getNode('sim').getChildren('fg-scenery');
+    foreach (var sceneryDirNode; sceneryDirNodes) {
+        var filename = sceneryDirNode.getValue() ~ '/NavData/cycle_info.txt';
+        if (io.stat(filename) != nil) {
+            return loadCycleInfo(filename);
+        }
+    }
+    return defaultCycleInfo;
+};
+
 var initDevice = func {
     # Clean up for reloading purposes
     if (updateTimer != nil) {
@@ -510,6 +559,8 @@ var initDevice = func {
     deviceProps['referenceLat'].setValue(0);
     deviceProps['referenceLon'] = props.globals.getNode('instrumentation/gps155/reference/longitude-deg', 1);
     deviceProps['referenceLon'].setValue(0);
+    deviceProps['navdb'] = props.globals.getNode('instrumentation/gps155/navdb', 1);
+    deviceProps['navdb'].setValues(loadNavDBInfo());
     deviceProps['powered'] = props.globals.getNode('instrumentation/gps155/powered', 1);
     setPropDefault(deviceProps.powered, 0);
     deviceProps['initializationTimer'] = props.globals.getNode('instrumentation/gps155/initializationTimer', 1);
