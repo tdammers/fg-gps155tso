@@ -593,6 +593,9 @@ var initDevice = func {
                 trk: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/trk', 1),
                 ete: props.globals.getNode('instrumentation/gps155/settings/fields/cdi/ete', 1),
             },
+            route: {
+                distanceMode: props.globals.getNode('instrumentation/gps155/settings/fields/route/distance-mode', 1),
+            },
         },
         startupSpeed: props.globals.getNode('instrumentation/gps155/settings/startup-speed', 1),
     };
@@ -607,6 +610,7 @@ var initDevice = func {
     setPropDefault(deviceProps.settings.units.pressure, 'hpa');
     setPropDefault(deviceProps.settings.units.temperature, 'degC');
     setPropDefault(deviceProps.settings.startupSpeed, 'realistic');
+    setPropDefault(deviceProps.settings.fields.route.distanceMode, 'leg');
 
     deviceProps['currentPage'] = {
         nav: props.globals.getNode('instrumentation/gps155/currentPage/nav', 1),

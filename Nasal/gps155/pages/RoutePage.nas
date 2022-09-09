@@ -84,6 +84,15 @@ var ActiveRoutePage = {
                 });
             })(i);
         }
+        append(self.selectableFields,
+            { row: 0, col: 12,
+              changeValue: func(amount) {
+                cycleProp(deviceProps.settings.fields.route.distanceMode,
+                    ['leg', 'cum', 'rem'],
+                    amount);
+                self.redraw();
+              }
+            });
     },
 
     update: func (dt) {
@@ -115,7 +124,8 @@ var ActiveRoutePage = {
                             navid5(fromID), navid5(tgtID));
         }
 
-        lines[0] = sprintf('%-11s leg dtk', legInfo);
+        var distMode = deviceProps.settings.fields.route.distanceMode.getValue();
+        lines[0] = sprintf('%-11s %3s dtk', legInfo, distMode);
 
         if (fp != nil and fp.getPlanSize() > 1) {
             for (var y = 0; y < 2; y += 1) {
@@ -160,7 +170,12 @@ var ActiveRoutePage = {
                     identStr = me.editableWaypointID;
                 }
                 elsif (wp != nil) {
-                    distStr = formatDistance(wp.leg_distance);
+                    if (distMode == 'leg')
+                        distStr = formatDistance(wp.leg_distance);
+                    elsif (distMode == 'cum')
+                        distStr = formatDistance(wp.distance_along_route);
+                    elsif (distMode == 'rem')
+                        distStr = formatDistance ((getprop('/autopilot/route-manager/total-distance') or 0) - wp.distance_along_route);
                     bearingStr = formatHeading(wp.leg_bearing);
                     identStr = navid5(wp.id, 5);
                 }
