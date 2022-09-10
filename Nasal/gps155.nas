@@ -65,6 +65,6 @@ var reload = func {
 
     loadIncludes();
 
-    initInput();
     initDevice();
+    initInput();
 };

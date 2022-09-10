@@ -472,10 +472,10 @@ var formatDistance = func (dist, inUnit='nm') {
     var symbol = units[outUnit].symbol;
 
     if (displayValue > 99999) {
-        return '+++++ ';
+        return '+++++';
     }
     elsif (displayValue < 0) {
-        return '----- ';
+        return '-----';
     }
     elsif (displayValue < 100) {
         var i = math.floor(displayValue);
