@@ -184,6 +184,7 @@ var updateSequencing = func {
         var i = fp.current + 1;
         nextLeg = fp.getWP(i);
         while (nextLeg != nil and
+               leg != nil and
                nextLeg.lat == leg.lat and
                nextLeg.lon == leg.lon) {
             i += 1;
